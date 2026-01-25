@@ -5,7 +5,7 @@ import GUI from 'lil-gui';
 
 // --- 1. CONFIGURAÇÃO DA CENA ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#c7c7c7');
+scene.background = new THREE.Color('d1d1d1');
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(2, 2, 5);
