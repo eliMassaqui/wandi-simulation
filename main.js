@@ -73,7 +73,7 @@ fileInput.addEventListener('change', (event) => {
 });
 
 // --- 4. GUI LIL-GUI ---
-const gui = new GUI({ title: 'Master Studio' });
+const gui = new GUI({ title: 'Studio' });
 
 const settings = {
     corFundo: '#c7c7c7',
