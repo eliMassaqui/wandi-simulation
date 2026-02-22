@@ -2,12 +2,124 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <title>simulation</title>
+  <title>Simulation com Web Serial</title>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* --- Estilos do Painel Serial Moderno --- */
+    #serial-panel {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .panel-header h3 { margin: 0; font-size: 16px; color: #333; }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      background: rgba(0,0,0,0.05);
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ff4757; }
+    .dot.connected { background-color: #2ed573; box-shadow: 0 0 8px #2ed573; }
+
+    .btn-group { display: flex; gap: 8px; }
+
+    button {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #btn-connect { background: #1e90ff; color: white; }
+    #btn-connect:hover:not(:disabled) { background: #1c81e6; }
+    
+    #btn-disconnect { background: #f1f2f6; color: #333; }
+    #btn-disconnect:hover:not(:disabled) { background: #dfe4ea; }
+
+    .log-area {
+      height: 100px;
+      background: #1e272e;
+      color: #00d2d3;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px;
+      border-radius: 6px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .input-group { display: flex; gap: 8px; }
+    
+    input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #1e90ff; }
+    
+    #btn-send { background: #2f3542; color: white; flex: 0.4; }
   </style>
 </head>
 <body>
+  
+  <div id="serial-panel">
+    <div class="panel-header">
+      <h3>Conexão Serial</h3>
+      <div class="status-badge">
+        <div id="status-dot" class="dot"></div>
+        <span id="status-text">Desconectado</span>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button id="btn-connect">Conectar</button>
+      <button id="btn-disconnect" disabled>Desconectar</button>
+    </div>
+
+    <div id="serial-log" class="log-area">Aguardando conexão...</div>
+
+    <div class="input-group">
+      <input type="text" id="serial-input" placeholder="Comando..." disabled />
+      <button id="btn-send" disabled>Enviar</button>
+    </div>
+  </div>
+
   <script type="module" src="/main.js"></script>
 </body>
 </html>
