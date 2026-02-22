@@ -2,6 +2,7 @@
 export class SerialManager {
     constructor() {
         this.port = null;
+        this.reader = null;
         this.keepReading = false;
         this.logBuffer = "";
         this.onData = null;
@@ -41,7 +42,7 @@ export class SerialManager {
     async readLoop() {
         const decoder = new TextDecoder();
         while (this.port?.readable && this.keepReading) {
-            const reader = this.port.readable.getReader();
+            this.reader = this.port.readable.getReader();
             try {
                 while (true) {
                     const { value, done } = await reader.read();
@@ -51,7 +52,7 @@ export class SerialManager {
                     if (this.onData) this.onData(text);
                 }
             } catch (err) { break; } 
-            finally { reader.releaseLock(); }
+            finally { this.reader.releaseLock(); }
         }
     }
 
@@ -60,22 +61,23 @@ export class SerialManager {
         if (!this.port?.writable || !val) return;
         const writer = this.port.writable.getWriter();
         await writer.write(new TextEncoder().encode(val + '\n'));
-        this.log(`\n>> ${val}\n`);
+        this.log(`\nTX > ${val}\n`);
         writer.releaseLock();
         this.ui.input.value = '';
     }
 
     async disconnect() {
         this.keepReading = false;
-        this.updateUI(false);
+        if (this.reader) await this.reader.cancel();
         if (this.port) await this.port.close();
+        this.updateUI(false);
     }
 
     log(text) {
         this.logBuffer += text;
         if (this.logBuffer.length > 3000) this.logBuffer = this.logBuffer.slice(-3000);
         this.ui.log.textContent = this.logBuffer;
-        this.ui.log.scrollTop = this.ui.log.scrollHeight;
+        this.ui.log.scrollBy(0, 100); // Scroll suave para baixo
     }
 
     updateUI(connected) {
@@ -84,6 +86,6 @@ export class SerialManager {
         this.ui.btnSend.disabled = !connected;
         this.ui.input.disabled = !connected;
         this.ui.dot.className = connected ? 'dot connected' : 'dot';
-        this.ui.text.textContent = connected ? 'Conectado' : 'Desconectado';
+        this.ui.text.textContent = connected ? 'ON' : 'OFF';
     }
 }

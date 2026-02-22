@@ -2,105 +2,118 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <title>Simulation Studio</title>
+  <title>Simulation Studio - Bottom Panel</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <style>
     :root {
-      --sidebar-width: 300px;
-      --glass-bg: rgba(255, 255, 255, 0.75);
-      --output-bg: #f5f5f7; 
+      --panel-height: 220px;
+      --glass-bg: rgba(255, 255, 255, 0.8);
+      --output-bg: #f5f5f7;
       --accent: #1e90ff;
       --text: #1d1d1f;
     }
 
-    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; background: #d1d1d1; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #d1d1d1; }
+    
+    /* O Canvas ocupa a tela toda, mas deixamos um padding no fundo se quiser */
     canvas { position: fixed; top: 0; left: 0; z-index: 1; }
 
+    /* Painel Inferior Fixo */
     #serial-panel {
-      position: fixed; right: 0; top: 0;
-      width: var(--sidebar-width); height: 100vh;
+      position: fixed;
+      bottom: 0; left: 0;
+      width: 100%;
+      height: var(--panel-height);
       background: var(--glass-bg);
-      backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
-      border-left: 1px solid rgba(0,0,0,0.1);
-      z-index: 100; display: flex; flex-direction: column;
-      box-shadow: -10px 0 30px rgba(0,0,0,0.03);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border-top: 1px solid rgba(0,0,0,0.1);
+      z-index: 100;
+      display: flex;
+      flex-direction: row; /* Alinhamento horizontal */
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
     }
 
-    @media (max-width: 600px) {
-      #serial-panel { width: 100%; height: 40vh; top: auto; bottom: 0; border-left: none; border-top: 1px solid rgba(0,0,0,0.1); }
+    .panel-section {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border-right: 1px solid rgba(0,0,0,0.05);
     }
 
-    .sidebar-content { padding: 24px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; gap: 16px; }
+    /* Área de Controles (Esquerda) */
+    .controls-area { width: 250px; min-width: 250px; }
 
-    .header { display: flex; justify-content: space-between; align-items: center; }
-    .header h3 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 
     .status-badge {
-      display: flex; align-items: center; gap: 6px; padding: 4px 10px;
-      background: rgba(0,0,0,0.05); border-radius: 20px; font-size: 11px; font-weight: 700; color: #666;
+      display: flex; align-items: center; gap: 5px; padding: 3px 8px;
+      background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.3s; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff4757; }
     .dot.connected { background: #2ed573; box-shadow: 0 0 8px #2ed573; }
 
-    .btn-group { display: flex; flex-direction: column; gap: 8px; }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     
     button {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 12px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s;
-      background: rgba(0,0,0,0.05); color: var(--text);
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: 0.2s; background: rgba(0,0,0,0.05); color: var(--text);
     }
     button:hover:not(:disabled) { background: rgba(0,0,0,0.1); }
     button#btn-connect { background: var(--accent); color: white; }
     button:disabled { opacity: 0.3; cursor: not-allowed; }
 
+    /* Console (Centro - Flexível) */
     .output-container {
-      flex: 1; display: flex; flex-direction: column;
-      background: var(--output-bg); border-radius: 12px; 
-      border: 1px solid rgba(0,0,0,0.03); overflow: hidden;
+      flex: 1; /* Ocupa todo o resto do espaço */
+      display: flex;
+      flex-direction: column;
+      background: var(--output-bg);
+      margin: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.03);
+      overflow: hidden;
     }
-    .output-header { padding: 10px 14px; font-size: 11px; font-weight: 700; color: #888; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .output-header { padding: 6px 12px; font-size: 10px; font-weight: 700; color: #999; border-bottom: 1px solid rgba(0,0,0,0.04); }
     
     #serial-log {
-      flex: 1; padding: 14px; font-family: 'SF Mono', 'Consolas', monospace;
+      flex: 1; padding: 12px; font-family: 'SF Mono', 'Consolas', monospace;
       font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap;
     }
 
-    .input-group { display: flex; gap: 8px; }
+    /* Input (Final da Seção de Controle) */
+    .input-group { display: flex; gap: 6px; margin-top: auto; }
     input {
-      flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);
-      background: white; outline: none; font-size: 13px;
+      flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);
+      background: white; outline: none; font-size: 12px;
     }
-    #btn-send { width: 60px; background: #2f3542; color: white; }
+    #btn-send { width: 45px; background: #2f3542; color: white; }
 
-    .material-symbols-rounded { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .material-symbols-rounded { font-size: 18px; }
   </style>
 </head>
 <body>
 
   <div id="serial-panel">
-    <div class="sidebar-content">
-      
+    <div class="panel-section controls-area">
       <div class="header">
-        <h3><span class="material-symbols-rounded">settings_input_component</span> Conexão</h3>
+        <h3><span class="material-symbols-rounded">settings_input_component</span> Serial</h3>
         <div class="status-badge">
           <div id="status-dot" class="dot"></div>
-          <span id="status-text">Desconectado</span>
+          <span id="status-text">OFF</span>
         </div>
       </div>
 
       <div class="btn-group">
         <button id="btn-connect">
-          <span class="material-symbols-rounded">bolt</span> Conectar
+          <span class="material-symbols-rounded">bolt</span> Ligar
         </button>
         <button id="btn-disconnect" disabled>
-          <span class="material-symbols-rounded">power_off</span> Desconectar
+          <span class="material-symbols-rounded">power_off</span> Sair
         </button>
-      </div>
-
-      <div class="output-container">
-        <div class="output-header">LIVE CONSOLE</div>
-        <div id="serial-log">Aguardando sinal...</div>
       </div>
 
       <div class="input-group">
@@ -109,7 +122,11 @@
           <span class="material-symbols-rounded">send</span>
         </button>
       </div>
+    </div>
 
+    <div class="output-container">
+      <div class="output-header">MONITOR DE DADOS</div>
+      <div id="serial-log">Aguardando conexão serial...</div>
     </div>
   </div>
 

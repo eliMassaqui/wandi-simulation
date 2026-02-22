@@ -15,12 +15,11 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 scene.add(new THREE.GridHelper(10, 10), new THREE.AmbientLight(0xffffff, 1));
 
-// Inicializa a Serial
+// Inicializa a Serial (Bottom Manager)
 const serial = new SerialManager();
 
-// Interação com os dados recebidos
 serial.onData = (data) => {
-    // Exemplo: console.log("Dado recebido:", data);
+    // Sua lógica de hardware aqui
 };
 
 function animate() {
