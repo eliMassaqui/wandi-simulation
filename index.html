@@ -2,61 +2,133 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <title>Simulation com Web Serial</title>
+  <title>Simulation Studio</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <style>
-    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #d1d1d1; }
+    :root {
+      --sidebar-width: 300px;
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --output-bg: #f5f5f7; /* Cinza branco suave */
+      --accent: #0071e3;
+      --text: #1d1d1f;
+    }
+
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; }
     
+    canvas { position: fixed; top: 0; left: 0; z-index: 1; }
+
+    /* Sidebar Redimensionável */
     #serial-panel {
-      position: absolute; bottom: 20px; right: 20px; width: 320px;
-      background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px;
-      padding: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-      z-index: 100; display: flex; flex-direction: column; gap: 12px;
+      position: fixed;
+      right: 0; top: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--glass-bg);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-left: 1px solid rgba(0,0,0,0.1);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s;
+      min-width: 200px;
+      max-width: 600px;
     }
 
-    .panel-header { display: flex; justify-content: space-between; align-items: center; }
-    .panel-header h3 { margin: 0; font-size: 16px; color: #333; }
-    .status-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #666; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ff4757; }
-    .dot.connected { background-color: #2ed573; box-shadow: 0 0 8px #2ed573; }
+    /* Barra de Redimensionamento */
+    #resizer {
+      width: 4px; height: 100%; cursor: ew-resize;
+      position: absolute; left: 0; top: 0; z-index: 101;
+    }
+    #resizer:hover { background: var(--accent); opacity: 0.5; }
 
-    .btn-group { display: flex; gap: 8px; }
-    button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #btn-connect { background: #1e90ff; color: white; }
-    #btn-disconnect { background: #f1f2f6; color: #333; }
+    .sidebar-content { padding: 24px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
 
-    .log-area {
-      height: 120px; background: #1e272e; color: #00d2d3;
-      font-family: monospace; font-size: 11px; padding: 8px;
-      border-radius: 6px; overflow-y: auto; white-space: pre-wrap;
-      word-break: break-all;
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .header h3 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+      background: rgba(0,0,0,0.05); border-radius: 20px; font-size: 11px; font-weight: 700;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #ff3b30; }
+    .dot.connected { background: #34c759; box-shadow: 0 0 8px #34c759; }
+
+    /* Botões Estilo Apple */
+    .actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    button {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(0,0,0,0.05); color: var(--text);
+    }
+    button:hover:not(:disabled) { background: rgba(0,0,0,0.1); transform: scale(1.02); }
+    button:active { transform: scale(0.98); }
+    button#btn-connect { background: var(--accent); color: white; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Output - Ocupando todo o espaço */
+    .output-container {
+      flex-grow: 1; display: flex; flex-direction: column;
+      background: var(--output-bg); border-radius: 12px; 
+      margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden;
+    }
+    .output-header { padding: 10px 14px; font-size: 11px; font-weight: 700; color: #888; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    
+    #serial-log {
+      flex-grow: 1; padding: 14px; font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap;
     }
 
-    .input-group { display: flex; gap: 8px; }
-    input[type="text"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
-    #btn-send { background: #2f3542; color: white; flex: 0.4; }
+    /* Input Group */
+    .input-group { display: flex; gap: 8px; align-items: center; }
+    input {
+      flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1);
+      background: white; outline: none; font-size: 13px;
+    }
+    #btn-send { width: 45px; height: 41px; padding: 0; border-radius: 10px; background: var(--text); color: white; }
+
+    .material-symbols-rounded { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; font-size: 20px; }
   </style>
 </head>
 <body>
+
   <div id="serial-panel">
-    <div class="panel-header">
-      <h3>Conexão Serial</h3>
-      <div class="status-badge">
-        <div id="status-dot" class="dot"></div>
-        <span id="status-text">Desconectado</span>
+    <div id="resizer"></div>
+    <div class="sidebar-content">
+      
+      <div class="header">
+        <h3><span class="material-symbols-rounded">settings_input_component</span> Serial</h3>
+        <div class="status-pill">
+          <div id="status-dot" class="dot"></div>
+          <span id="status-text">OFFLINE</span>
+        </div>
       </div>
-    </div>
-    <div class="btn-group">
-      <button id="btn-connect">Conectar</button>
-      <button id="btn-disconnect" disabled>Desconectar</button>
-    </div>
-    <div id="serial-log" class="log-area">Aguardando...</div>
-    <div class="input-group">
-      <input type="text" id="serial-input" placeholder="Comando..." disabled />
-      <button id="btn-send" disabled>Enviar</button>
+
+      <div class="actions">
+        <button id="btn-connect">
+          <span class="material-symbols-rounded">bolt</span> Conectar
+        </button>
+        <button id="btn-disconnect" disabled>
+          <span class="material-symbols-rounded">power_off</span> Desconectar
+        </button>
+      </div>
+
+      <div class="output-container">
+        <div class="output-header">LIVE CONSOLE</div>
+        <div id="serial-log">Aguardando entrada de dados...</div>
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="serial-input" placeholder="Comando..." disabled />
+        <button id="btn-send" disabled title="Enviar">
+          <span class="material-symbols-rounded">send</span>
+        </button>
+      </div>
+
     </div>
   </div>
+
   <script type="module" src="/main.js"></script>
 </body>
 </html>
