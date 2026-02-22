@@ -6,46 +6,24 @@ export class SerialManager {
         this.logBuffer = "";
         this.onData = null;
 
-        this.initUI();
+        this.ui = {
+            btnConnect: document.getElementById('btn-connect'),
+            btnDisconnect: document.getElementById('btn-disconnect'),
+            btnSend: document.getElementById('btn-send'),
+            input: document.getElementById('serial-input'),
+            log: document.getElementById('serial-log'),
+            dot: document.getElementById('status-dot'),
+            text: document.getElementById('status-text')
+        };
+
         this.initEvents();
-        this.initResizer();
-    }
-
-    initUI() {
-        this.panel = document.getElementById('serial-panel');
-        this.btnConnect = document.getElementById('btn-connect');
-        this.btnDisconnect = document.getElementById('btn-disconnect');
-        this.btnSend = document.getElementById('btn-send');
-        this.input = document.getElementById('serial-input');
-        this.logElem = document.getElementById('serial-log');
-        this.dot = document.getElementById('status-dot');
-        this.statusText = document.getElementById('status-text');
-    }
-
-    initResizer() {
-        const resizer = document.getElementById('resizer');
-        resizer.addEventListener('mousedown', (e) => {
-            document.addEventListener('mousemove', resize);
-            document.addEventListener('mouseup', stopResize);
-        });
-
-        const resize = (e) => {
-            const newWidth = window.innerWidth - e.pageX;
-            if (newWidth > 200 && newWidth < 600) {
-                this.panel.style.width = `${newWidth}px`;
-            }
-        };
-
-        const stopResize = () => {
-            document.removeEventListener('mousemove', resize);
-        };
     }
 
     initEvents() {
-        this.btnConnect.onclick = () => this.connect();
-        this.btnDisconnect.onclick = () => this.disconnect();
-        this.btnSend.onclick = () => this.send();
-        this.input.onkeypress = (e) => { if (e.key === 'Enter') this.send(); };
+        this.ui.btnConnect.onclick = () => this.connect();
+        this.ui.btnDisconnect.onclick = () => this.disconnect();
+        this.ui.btnSend.onclick = () => this.send();
+        this.ui.input.onkeypress = (e) => { if (e.key === 'Enter') this.send(); };
     }
 
     async connect() {
@@ -78,12 +56,13 @@ export class SerialManager {
     }
 
     async send() {
-        if (!this.port?.writable || !this.input.value) return;
+        const val = this.ui.input.value;
+        if (!this.port?.writable || !val) return;
         const writer = this.port.writable.getWriter();
-        await writer.write(new TextEncoder().encode(this.input.value + '\n'));
-        this.log(`\n>> ${this.input.value}\n`);
+        await writer.write(new TextEncoder().encode(val + '\n'));
+        this.log(`\n>> ${val}\n`);
         writer.releaseLock();
-        this.input.value = '';
+        this.ui.input.value = '';
     }
 
     async disconnect() {
@@ -95,16 +74,16 @@ export class SerialManager {
     log(text) {
         this.logBuffer += text;
         if (this.logBuffer.length > 3000) this.logBuffer = this.logBuffer.slice(-3000);
-        this.logElem.textContent = this.logBuffer;
-        this.logElem.scrollTop = this.logElem.scrollHeight;
+        this.ui.log.textContent = this.logBuffer;
+        this.ui.log.scrollTop = this.ui.log.scrollHeight;
     }
 
     updateUI(connected) {
-        this.btnConnect.disabled = connected;
-        this.btnDisconnect.disabled = !connected;
-        this.btnSend.disabled = !connected;
-        this.input.disabled = !connected;
-        this.dot.className = connected ? 'dot connected' : 'dot';
-        this.statusText.textContent = connected ? 'ONLINE' : 'OFFLINE';
+        this.ui.btnConnect.disabled = connected;
+        this.ui.btnDisconnect.disabled = !connected;
+        this.ui.btnSend.disabled = !connected;
+        this.ui.input.disabled = !connected;
+        this.ui.dot.className = connected ? 'dot connected' : 'dot';
+        this.ui.text.textContent = connected ? 'Conectado' : 'Desconectado';
     }
 }
