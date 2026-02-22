@@ -1,4 +1,8 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+// --- 0. IMPORTS ---
+>>>>>>> parent of 32c3cf3 (WEB SERIAL API)
 =======
 // --- 0. IMPORTS ---
 >>>>>>> parent of 32c3cf3 (WEB SERIAL API)
@@ -10,7 +14,11 @@ import GUI from 'lil-gui';
 // --- 1. CONFIGURAÇÃO DA CENA ---
 const scene = new THREE.Scene();
 <<<<<<< HEAD
+<<<<<<< HEAD
 scene.background = new THREE.Color('#d1d1d1');
+=======
+scene.background = new THREE.Color('#d1d1d1'); // cor de fundo
+>>>>>>> parent of 32c3cf3 (WEB SERIAL API)
 =======
 scene.background = new THREE.Color('#d1d1d1'); // cor de fundo
 >>>>>>> parent of 32c3cf3 (WEB SERIAL API)
@@ -71,6 +79,7 @@ const carregarModelo = (url) => {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // --- 4. GUI LIL-GUI (Ajustes de Render) ---
 const gui = new GUI({ title: 'Configurações de Render' });
 const settings = {
@@ -95,6 +104,21 @@ fileInput.addEventListener('change', (event) => {
 const gui = new GUI({ title: 'Studio' });
 
 const settings = {
+=======
+// Evento do input (arquivo local)
+fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        const url = URL.createObjectURL(file);
+        carregarModelo(url);
+    }
+});
+
+// --- 4. GUI LIL-GUI ---
+const gui = new GUI({ title: 'Studio' });
+
+const settings = {
+>>>>>>> parent of 32c3cf3 (WEB SERIAL API)
     corFundo: '#c7c7c7',
     exposicao: 0.8,
     reflexos: 0.3,
@@ -105,6 +129,7 @@ const pastaRender = gui.addFolder('Render & Ambiente');
 pastaRender.addColor(settings, 'corFundo').name('Cor do Fundo').onChange(v => scene.background.set(v));
 pastaRender.add(settings, 'exposicao', 0, 2).name('Exposição').onChange(v => renderer.toneMappingExposure = v);
 pastaRender.add(settings, 'reflexos', 0, 1).name('Reflexos');
+<<<<<<< HEAD
 >>>>>>> parent of 32c3cf3 (WEB SERIAL API)
 
 // --- 5. LÓGICA WEB SERIAL API ---
@@ -184,10 +209,19 @@ fileInput.addEventListener('change', (event) => {
 
 // --- 7. RESIZE E LOOP ---
 =======
+=======
+
+const pastaModelo = gui.addFolder('Ajuste Modelo');
+pastaModelo.add(settings, 'trocarModelo').name('📁 Trocar Modelo');
+
+>>>>>>> parent of 32c3cf3 (WEB SERIAL API)
 // --- 5. MODELO INICIAL ---
 carregarModelo('/models/meninapintando.glb'); // modelo inicial da pasta public/models
 
 // --- 6. RESIZE ---
+<<<<<<< HEAD
+>>>>>>> parent of 32c3cf3 (WEB SERIAL API)
+=======
 >>>>>>> parent of 32c3cf3 (WEB SERIAL API)
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -202,7 +236,11 @@ function animate() {
     renderer.render(scene, camera);
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
 animate();
+=======
+animate();
+>>>>>>> parent of 32c3cf3 (WEB SERIAL API)
 =======
 animate();
 >>>>>>> parent of 32c3cf3 (WEB SERIAL API)
