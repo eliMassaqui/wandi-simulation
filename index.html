@@ -2,157 +2,124 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-<<<<<<< HEAD
-<<<<<<< HEAD
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wandi Studio 3D</title>
+  <title>Simulation com Web Serial</title>
   <style>
-    /* Reset básico */
-    body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    canvas { display: block; }
-
-    /* --- Painel de Controle Studio --- */
-    #studio-panel {
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* --- Estilos do Painel Serial Moderno --- */
+    #serial-panel {
       position: absolute;
-      top: 20px;
+      bottom: 20px;
       right: 20px;
-      width: 280px;
-      background: rgba(30, 30, 30, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 320px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 12px;
       padding: 16px;
-      color: #e0e0e0;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      z-index: 1000;
-      user-select: none;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.3s ease;
     }
 
-    .header {
+    .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      padding-bottom: 10px;
+      margin-bottom: 4px;
     }
 
-    .header h3 { margin: 0; font-size: 14px; letter-spacing: 1.5px; color: #0078d4; text-transform: uppercase; }
+    .panel-header h3 { margin: 0; font-size: 16px; color: #333; }
 
     .status-badge {
-      font-size: 10px;
-      padding: 4px 8px;
-      border-radius: 20px;
-      background: rgba(255, 0, 0, 0.2);
-      color: #ff4d4d;
-      font-weight: bold;
       display: flex;
       align-items: center;
-      gap: 5px;
-    }
-
-    .status-badge.online {
-      background: rgba(0, 255, 100, 0.2);
-      color: #00ff64;
-    }
-
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-    /* Seções e Botões */
-    .section { margin-bottom: 18px; }
-    .label { font-size: 11px; color: #888; margin-bottom: 8px; display: block; text-transform: uppercase; }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
+      gap: 6px;
       font-size: 12px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .btn-primary { background: #0078d4; color: white; }
-    .btn-primary:hover { background: #005a9e; transform: translateY(-1px); }
-    
-    .btn-secondary { background: rgba(255, 255, 255, 0.05); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.1); }
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-
-    .btn-danger { background: rgba(255, 59, 48, 0.2); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.3); }
-    .btn-danger:hover { background: rgba(255, 59, 48, 0.3); }
-
-    /* Log Serial */
-    #serial-log {
-      height: 60px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 4px;
-      padding: 8px;
-      font-family: 'Consolas', monospace;
-      font-size: 11px;
-      color: #00ff64;
-      overflow-y: auto;
-      margin-top: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .file-name {
-      font-size: 10px;
       color: #666;
-      text-align: center;
-      margin-top: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      background: rgba(0,0,0,0.05);
+      padding: 4px 8px;
+      border-radius: 12px;
     }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ff4757; }
+    .dot.connected { background-color: #2ed573; box-shadow: 0 0 8px #2ed573; }
+
+    .btn-group { display: flex; gap: 8px; }
+
+    button {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #btn-connect { background: #1e90ff; color: white; }
+    #btn-connect:hover:not(:disabled) { background: #1c81e6; }
+    
+    #btn-disconnect { background: #f1f2f6; color: #333; }
+    #btn-disconnect:hover:not(:disabled) { background: #dfe4ea; }
+
+    .log-area {
+      height: 100px;
+      background: #1e272e;
+      color: #00d2d3;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px;
+      border-radius: 6px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .input-group { display: flex; gap: 8px; }
+    
+    input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #1e90ff; }
+    
+    #btn-send { background: #2f3542; color: white; flex: 0.4; }
   </style>
 </head>
 <body>
-
-  <div id="studio-panel">
-    <div class="header">
-      <h3>Wandi Engine</h3>
-      <div id="status-badge" class="status-badge">
-        <div class="dot"></div>
-        <span id="status-text">Offline</span>
+  
+  <div id="serial-panel">
+    <div class="panel-header">
+      <h3>Conexão Serial</h3>
+      <div class="status-badge">
+        <div id="status-dot" class="dot"></div>
+        <span id="status-text">Desconectado</span>
       </div>
     </div>
 
-    <div class="section">
-      <span class="label">Modelo 3D</span>
-      <button id="btn-import" class="btn-secondary">📁 Importar Modelo .GLB</button>
-      <div id="file-name" class="file-name">Nenhum modelo carregado</div>
+    <div class="btn-group">
+      <button id="btn-connect">Conectar</button>
+      <button id="btn-disconnect" disabled>Desconectar</button>
     </div>
 
-    <div class="section">
-      <span class="label">Interface Hardware</span>
-      <button id="btn-connect" class="btn-primary">🔌 Conectar Dispositivo</button>
-      <button id="btn-disconnect" class="btn-danger" style="display: none;">Desconectar</button>
-      <div id="serial-log">Aguardando hardware...</div>
+    <div id="serial-log" class="log-area">Aguardando conexão...</div>
+
+    <div class="input-group">
+      <input type="text" id="serial-input" placeholder="Comando..." disabled />
+      <button id="btn-send" disabled>Enviar</button>
     </div>
   </div>
 
-=======
-  <title>simulation</title>
-  <style>
-    body { margin: 0; overflow: hidden; }
-  </style>
-</head>
-<body>
->>>>>>> parent of 32c3cf3 (WEB SERIAL API)
-=======
-  <title>simulation</title>
-  <style>
-    body { margin: 0; overflow: hidden; }
-  </style>
-</head>
-<body>
->>>>>>> parent of 32c3cf3 (WEB SERIAL API)
   <script type="module" src="/main.js"></script>
 </body>
 </html>
