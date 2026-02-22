@@ -1,11 +1,11 @@
-// --- 0 a 7: MANTENHA SEU CÓDIGO THREE.JS EXISTENTE AQUI ---
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import GUI from 'lil-gui';
 
+// --- 1. CONFIGURAÇÃO DA CENA ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#d1d1d1'); 
+scene.background = new THREE.Color('#d1d1d1');
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(2, 2, 5);
@@ -21,12 +21,15 @@ controls.enableDamping = true;
 const gridHelper = new THREE.GridHelper(10, 10);
 scene.add(gridHelper);
 
+// --- 2. ILUMINAÇÃO ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 scene.add(ambientLight);
+
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(5, 5, 5);
 scene.add(directionalLight);
 
+// --- 3. LÓGICA DE CARREGAMENTO ---
 const loader = new GLTFLoader();
 let modeloAtual = null;
 
@@ -50,29 +53,99 @@ const carregarModelo = (url) => {
     );
 };
 
-fileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (file) carregarModelo(URL.createObjectURL(file));
-});
-
-const gui = new GUI({ title: 'Studio' });
+// --- 4. GUI LIL-GUI (Ajustes de Render) ---
+const gui = new GUI({ title: 'Configurações de Render' });
 const settings = {
     corFundo: '#d1d1d1',
-    exposicao: 1.0,
-    reflexos: 0.3,
-    trocarModelo: () => fileInput.click()
+    exposicao: 0.8,
+    reflexos: 0.3
 };
 
-const pastaRender = gui.addFolder('Render & Ambiente');
-pastaRender.addColor(settings, 'corFundo').onChange(v => scene.background.set(v));
-pastaRender.add(settings, 'exposicao', 0, 2).onChange(v => renderer.toneMappingExposure = v);
+gui.addColor(settings, 'corFundo').name('Fundo').onChange(v => scene.background.set(v));
+gui.add(settings, 'exposicao', 0, 2).name('Exposição').onChange(v => renderer.toneMappingExposure = v);
 
-const pastaModelo = gui.addFolder('Ajuste Modelo');
-pastaModelo.add(settings, 'trocarModelo').name('📁 Trocar Modelo');
+// --- 5. LÓGICA WEB SERIAL API ---
+let porta;
+let keepReading = false;
 
-// Carregue o modelo inicial
-// carregarModelo('/models/meninapintando.glb'); 
+const btnConnect = document.getElementById('btn-connect');
+const btnDisconnect = document.getElementById('btn-disconnect');
+const statusBadge = document.getElementById('status-badge');
+const statusText = document.getElementById('status-text');
+const serialLog = document.getElementById('serial-log');
 
+async function lerDados() {
+    const decoder = new TextDecoderStream();
+    const inputDone = porta.readable.pipeTo(decoder.writable);
+    const reader = decoder.readable.getReader();
+
+    try {
+        while (keepReading) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            if (value) {
+                serialLog.innerText = `RX: ${value.trim()}`;
+                
+                // INTEGRAÇÃO: Se receber um número, rotaciona o modelo
+                if (modeloAtual) {
+                    const num = parseFloat(value);
+                    if (!isNaN(num)) {
+                        modeloAtual.rotation.y = num * (Math.PI / 180);
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Erro de leitura:", err);
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+btnConnect.addEventListener('click', async () => {
+    try {
+        // Isso ativa o diálogo do PyQt que você criou!
+        porta = await navigator.serial.requestPort();
+        await porta.open({ baudRate: 9600 });
+
+        keepReading = true;
+        btnConnect.style.display = 'none';
+        btnDisconnect.style.display = 'flex';
+        statusBadge.classList.add('online');
+        statusText.innerText = 'Online';
+        serialLog.innerText = 'Conectado.';
+
+        lerDados();
+    } catch (err) {
+        serialLog.innerText = 'Conexão cancelada.';
+    }
+});
+
+btnDisconnect.addEventListener('click', async () => {
+    keepReading = false;
+    if (porta) await porta.close();
+    
+    btnConnect.style.display = 'flex';
+    btnDisconnect.style.display = 'none';
+    statusBadge.classList.remove('online');
+    statusText.innerText = 'Offline';
+    serialLog.innerText = 'Desconectado.';
+});
+
+// --- 6. INTEGRAÇÃO DOS BOTÕES DO CARD ---
+document.getElementById('btn-import').onclick = () => fileInput.click();
+
+fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        document.getElementById('file-name').innerText = file.name;
+        const url = URL.createObjectURL(file);
+        carregarModelo(url);
+    }
+});
+
+// --- 7. RESIZE E LOOP ---
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -85,136 +158,3 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
-
-
-// ==========================================
-// --- 8. LÓGICA DA WEB SERIAL API ---
-// ==========================================
-
-let port;
-let reader;
-let writer;
-let keepReading = false;
-
-// Elementos da UI
-const btnConnect = document.getElementById('btn-connect');
-const btnDisconnect = document.getElementById('btn-disconnect');
-const btnSend = document.getElementById('btn-send');
-const serialInput = document.getElementById('serial-input');
-const serialLog = document.getElementById('serial-log');
-const statusDot = document.getElementById('status-dot');
-const statusText = document.getElementById('status-text');
-
-// Atualiza a UI baseada no estado da conexão
-function updateUI(connected) {
-    btnConnect.disabled = connected;
-    btnDisconnect.disabled = !connected;
-    btnSend.disabled = !connected;
-    serialInput.disabled = !connected;
-    
-    if (connected) {
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Conectado';
-        serialLog.textContent = 'Conexão estabelecida.\n';
-    } else {
-        statusDot.classList.remove('connected');
-        statusText.textContent = 'Desconectado';
-        serialLog.textContent += '\nDesconectado.';
-    }
-}
-
-// Função para adicionar texto ao log
-function logSerialData(text) {
-    serialLog.textContent += text;
-    serialLog.scrollTop = serialLog.scrollHeight; // Auto-scroll
-}
-
-// Conectar à porta serial
-btnConnect.addEventListener('click', async () => {
-    if (!('serial' in navigator)) {
-        alert("Web Serial API não suportada neste navegador. Use o Chrome ou Edge.");
-        return;
-    }
-
-    try {
-        port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 9600 }); // Ajuste o baudRate conforme seu hardware
-        
-        updateUI(true);
-        keepReading = true;
-        
-        // Inicia o loop de leitura
-        readUntilClosed();
-    } catch (error) {
-        console.error('Erro ao conectar:', error);
-        logSerialData(`\nErro: ${error.message}`);
-    }
-});
-
-// Loop assíncrono para ler os dados continuamente
-async function readUntilClosed() {
-    const textDecoder = new TextDecoderStream();
-    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-    reader = textDecoder.readable.getReader();
-
-    try {
-        while (keepReading) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            
-            // Aqui os dados chegam como String.
-            logSerialData(value);
-
-            // ==========================================
-            // LÓGICA DE INTERAÇÃO COM O 3D:
-            // Se o seu microcontrolador enviar "ROTATE_X:0.5\n",
-            // você pode processar isso aqui. Exemplo:
-            // if (modeloAtual && value.includes('ROTATE')) {
-            //    modeloAtual.rotation.y += 0.1;
-            // }
-            // ==========================================
-        }
-    } catch (error) {
-        console.error('Erro de leitura:', error);
-    } finally {
-        reader.releaseLock();
-    }
-}
-
-// Desconectar da porta serial
-btnDisconnect.addEventListener('click', async () => {
-    keepReading = false;
-    
-    // Força o cancelamento da leitura para liberar o "lock" da porta
-    if (reader) {
-        await reader.cancel();
-    }
-    
-    if (port) {
-        await port.close();
-    }
-    updateUI(false);
-});
-
-// Enviar dados pela porta serial
-btnSend.addEventListener('click', async () => {
-    if (!port || !port.writable) return;
-    
-    const data = serialInput.value;
-    if (!data) return;
-
-    const textEncoder = new TextEncoderStream();
-    const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-    writer = textEncoder.writable.getWriter();
-
-    await writer.write(data + '\n');
-    logSerialData(`\n[Enviado]: ${data}\n`);
-    
-    writer.releaseLock();
-    serialInput.value = ''; // Limpa o input
-});
-
-// Permite enviar com a tecla Enter
-serialInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') btnSend.click();
-});
