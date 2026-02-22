@@ -105,20 +105,13 @@ async function lerDados() {
 
 btnConnect.addEventListener('click', async () => {
     try {
-        // Isso ativa o diálogo do PyQt que você criou!
-        porta = await navigator.serial.requestPort();
-        await porta.open({ baudRate: 9600 });
-
-        keepReading = true;
-        btnConnect.style.display = 'none';
-        btnDisconnect.style.display = 'flex';
-        statusBadge.classList.add('online');
-        statusText.innerText = 'Online';
-        serialLog.innerText = 'Conectado.';
-
-        lerDados();
+        console.log("Solicitando porta ao sistema...");
+        const porta = await navigator.serial.requestPort();
+        // ... resto do código de abrir porta
     } catch (err) {
-        serialLog.innerText = 'Conexão cancelada.';
+        // Se aparecer "navigator.serial is undefined", o problema é a flag do Chrome
+        serialLog.innerText = "Erro: " + err.name + " - " + err.message;
+        console.error(err);
     }
 });
 
