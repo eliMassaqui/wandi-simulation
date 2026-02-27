@@ -15,10 +15,7 @@
     }
 
     body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #d1d1d1; }
-<<<<<<< HEAD
-=======
     canvas { position: fixed; top: 0; left: 0; z-index: 1; }
->>>>>>> parent of 8585a7f (guireee)
 
     #serial-panel {
       position: fixed; bottom: 0; left: 0; width: 100%; height: var(--panel-height);
@@ -32,18 +29,10 @@
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
 
-<<<<<<< HEAD
-    /* LED Status */
-    .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red-led); transition: 0.4s; }
-    
-    /* ESTADO CONECTADO (VERDE) */
-=======
     /* LED Status com Pulsação */
     .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
     
->>>>>>> parent of 8585a7f (guireee)
     .dot.connected { 
       background: var(--green-led); 
       box-shadow: 0 0 10px var(--green-led);
@@ -56,15 +45,10 @@
       100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
     }
 
-<<<<<<< HEAD
-    .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
-    #serial-log { flex: 1; padding: 12px; font-family: 'SF Mono', monospace; font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap; }
-=======
     .info-box { background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; font-size: 11px; color: #666; border: 1px solid rgba(0,0,0,0.02); }
     .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
     .output-header { padding: 6px 12px; font-size: 10px; font-weight: 700; color: #999; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; }
     #serial-log { flex: 1; padding: 12px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap; }
->>>>>>> parent of 8585a7f (guireee)
 
     .input-group { display: flex; gap: 6px; margin-top: auto; }
     input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: white; outline: none; font-size: 12px; }
@@ -80,11 +64,7 @@
         <h3><span class="material-symbols-rounded">settings_input_component</span> Hardware</h3>
         <div class="status-badge">
           <div id="status-dot" class="dot"></div>
-<<<<<<< HEAD
-          <span id="status-text" style="color: var(--red-led);">OFFLINE</span>
-=======
           <span id="status-text">OFFLINE</span>
->>>>>>> parent of 8585a7f (guireee)
         </div>
       </div>
       <div class="info-box">Conectado via Bridge WebSocket (localhost:8765)</div>
@@ -95,10 +75,7 @@
     </div>
 
     <div class="output-container">
-<<<<<<< HEAD
-=======
       <div class="output-header">MONITOR SERIAL (LIVE)</div>
->>>>>>> parent of 8585a7f (guireee)
       <div id="serial-log">Aguardando conexão com a IDE...</div>
     </div>
   </div>
