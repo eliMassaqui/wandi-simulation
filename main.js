@@ -18,61 +18,67 @@ scene.add(new THREE.GridHelper(10, 10), new THREE.AmbientLight(0xffffff, 1));
 const cube = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ color: 0x1e90ff }));
 scene.add(cube);
 
-// --- LÓGICA DE COMUNICAÇÃO WEBSOCKET ---
 let socket = null;
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const logElement = document.getElementById('serial-log');
 
 function connect() {
+    // Cria a conexão WebSocket
     socket = new WebSocket("ws://localhost:8765");
 
     socket.onopen = () => {
-        statusDot.classList.add('connected');
-        statusText.innerText = "ONLINE";
-        addLog("✅ Conectado à Wandi IDE.");
+        console.log("🚀 Conectado ao Servidor Local");
+        // O status real (Verde/Vermelho) virá da mensagem "STATUS:..." do Python
     };
 
     socket.onmessage = (event) => {
         const data = event.data;
-        
-        // Se o Python enviar comando de status
-        if (data === "CONNECTED_STATUS:true") {
-            statusDot.classList.add('connected');
-            statusText.innerText = "ONLINE";
-        } else if (data === "CONNECTED_STATUS:false") {
-            statusDot.classList.remove('connected');
-            statusText.innerText = "OFFLINE";
-        } else {
-            addLog(`RX: ${data}`);
-            // Lógica de simulação: Exemplo girar cubo
-            cube.rotation.y += 0.1;
+
+        // Trata mensagens de Status do Sistema
+        if (data.startsWith("STATUS:")) {
+            const state = data.split(":")[1];
+            if (state === "ON") {
+                statusDot.classList.add('connected');
+                statusText.innerText = "ONLINE";
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.innerText = "OFFLINE";
+            }
+            return;
         }
+
+        // Se for dado do Arduino, mostra no log e move o 3D
+        logElement.innerText += `\n> ${data}`;
+        logElement.scrollTop = logElement.scrollHeight;
+        
+        // Exemplo: se chegar um dado, rotaciona algo no Three.js
+        // if(window.myMesh) window.myMesh.rotation.y += 0.1;
     };
 
     socket.onclose = () => {
         statusDot.classList.remove('connected');
-        statusText.innerText = "OFFLINE";
-        setTimeout(connect, 3000); // Tenta reconectar a cada 3s
+        statusText.innerText = "RECONECTANDO...";
+        // Tenta reconectar em 2 segundos se cair ou se o servidor ainda não subiu
+        setTimeout(connect, 2000);
+    };
+
+    socket.onerror = () => {
+        socket.close(); // Força o trigger do onclose para reconectar
     };
 }
 
-function addLog(msg) {
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    logElement.innerText += `\n[${t}] ${msg}`;
-    logElement.scrollTop = logElement.scrollHeight;
-}
+// Inicializa a tentativa de conexão
+connect();
 
-// Botão Enviar
+// Envio de comando pelo botão
 document.getElementById('btn-send').onclick = () => {
     const input = document.getElementById('serial-input');
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(input.value);
-        addLog(`TX: ${input.value}`);
         input.value = "";
     }
 };
-
 // --- RENDER LOOP ---
 function animate() {
     requestAnimationFrame(animate);
