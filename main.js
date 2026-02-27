@@ -1,26 +1,3 @@
-import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
-import { OrbitControls } from 'https://cdn.skypack.dev/three@0.150.1/examples/jsm/controls/OrbitControls.js';
-
-// --- CONFIGURAÇÃO DA CENA THREE.JS (Original) ---
-const scene = new THREE.Scene();
-scene.background = new THREE.Color('#d1d1d1');
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight - 220), 0.1, 1000);
-camera.position.set(3, 3, 5);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight - 220);
-document.body.appendChild(renderer.domElement);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-scene.add(new THREE.GridHelper(10, 10), new THREE.AmbientLight(0xffffff, 1));
-
-// OBJETO DE TESTE (Exemplo: Cubo que reagirá ao hardware)
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshStandardMaterial({ color: 0x1e90ff });
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
-
 // --- ELEMENTOS DA INTERFACE ---
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
@@ -28,104 +5,101 @@ const logElement = document.getElementById('serial-log');
 const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
 
-// --- LÓGICA DE COMUNICAÇÃO WEBSOCKET (PONTE AUTOMÁTICA) ---
+// --- CONFIGURAÇÃO DA CONEXÃO ---
 let socket = null;
-let reconnectInterval = 2000; // 2 segundos
+const BRIDGE_URL = "ws://127.0.0.1:8765"; // IP numérico evita falhas de DNS local
+const RECONNECT_INTERVAL = 2000; // Tenta reconectar a cada 2 segundos
 
-function connectToIDE() {
-    console.log("Tentando conectar ao servidor da Wandi IDE...");
+/**
+ * Inicia o ciclo de conexão automática e infinita
+ */
+function startBridgeConnection() {
+    console.log(`Buscando Wandi IDE em ${BRIDGE_URL}...`);
     
-    // Conecta ao servidor WebSocket local aberto pelo Python
-    socket = new WebSocket("ws://localhost:8765");
+    socket = new WebSocket(BRIDGE_URL);
 
+    // Quando a ponte WebSocket é estabelecida
     socket.onopen = () => {
-        console.log("✅ Conexão estabelecida com a ponte local.");
-        addLog("Sistema: Conectado à Wandi IDE.");
-        // O status "Online/Offline" do Hardware será definido pelo comando STATUS: vindo do Python
+        console.log("✅ Conectado ao servidor de ponte local.");
+        addLog("SISTEMA: Ponte estabelecida. Sincronizando hardware...");
     };
 
+    // Processamento de mensagens recebidas
     socket.onmessage = (event) => {
-        const data = event.data;
+        const message = event.data;
 
-        // 1. TRATAMENTO DE STATUS DO HARDWARE
-        if (data.startsWith("STATUS:")) {
-            const state = data.split(":")[1];
-            if (state === "ON") {
-                statusDot.classList.add('connected');
-                statusText.innerText = "ONLINE";
-                addLog("Hardware: Porta Serial Ativa.");
-            } else {
-                statusDot.classList.remove('connected');
-                statusText.innerText = "OFFLINE";
-                addLog("Hardware: Porta Serial Desconectada.");
-            }
+        // Lógica de Status: Define se o Hardware (Arduino) está ligado ou não
+        if (message.startsWith("STATUS:")) {
+            const state = message.split(":")[1];
+            updateStatusUI(state === "ON");
             return;
         }
 
-        // 2. TRATAMENTO DE DADOS DO ARDUINO (RX)
-        addLog(`RX: ${data}`);
-
-        // EXEMPLO DE LÓGICA REALISTA: 
-        // Se receber um número, rotaciona o cubo
-        const val = parseFloat(data);
-        if (!isNaN(val)) {
-            cube.rotation.y = val * (Math.PI / 180);
-        }
+        // Lógica de Dados: Monitor Serial (RX)
+        addLog(`RX: ${message}`);
+        
+        // --- AQUI VOCÊ ADICIONA SUA LÓGICA THREE.JS ---
+        // Exemplo: if(message === '1') cube.rotation.x += 0.5;
     };
 
+    // Gerenciamento de falhas e reconexão automática
     socket.onclose = () => {
-        console.warn("❌ Conexão com a IDE perdida. Tentando reconectar...");
+        updateStatusUI(false); // Garante que fique OFFLINE na interface
+        console.warn("⚠️ Conexão perdida. Tentando reconectar automaticamente...");
+        
+        // Limpa o socket atual e agenda nova tentativa
+        socket = null;
+        setTimeout(startBridgeConnection, RECONNECT_INTERVAL);
+    };
+
+    // Erros silenciosos para não travar o console
+    socket.onerror = (err) => {
+        socket.close(); 
+    };
+}
+
+/**
+ * Atualiza o LED pulsante e o texto de status
+ */
+function updateStatusUI(isOnline) {
+    if (isOnline) {
+        statusDot.classList.add('connected');
+        statusText.innerText = "ONLINE";
+        statusText.style.color = "#2ed573";
+    } else {
         statusDot.classList.remove('connected');
         statusText.innerText = "OFFLINE";
-        
-        // Tenta reconectar automaticamente
-        setTimeout(connectToIDE, reconnectInterval);
-    };
-
-    socket.onerror = (error) => {
-        // Apenas fecha o socket, o onclose cuidará da reconexão
-        socket.close();
-    };
-}
-
-// --- FUNÇÕES AUXILIARES ---
-
-function addLog(msg) {
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (logElement) {
-        logElement.innerText += `\n[${time}] ${msg}`;
-        logElement.scrollTop = logElement.scrollHeight;
+        statusText.style.color = "#ff4757";
     }
 }
 
-// Enviar comandos para o Arduino (TX)
-btnSend.onclick = () => {
-    const msg = cmdInput.value;
-    if (socket && socket.readyState === WebSocket.OPEN && msg) {
-        socket.send(msg);
-        addLog(`TX: ${msg}`);
+/**
+ * Adiciona mensagens ao monitor de dados (Live)
+ */
+function addLog(msg) {
+    if (!logElement) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    // Adiciona o texto e faz scroll automático para o final
+    logElement.innerText += `\n[${time}] ${msg}`;
+    logElement.scrollTop = logElement.scrollHeight;
+}
+
+/**
+ * Envio de comandos da Web para o Hardware (TX)
+ */
+function sendCommand() {
+    const val = cmdInput.value.trim();
+    if (socket && socket.readyState === WebSocket.OPEN && val !== "") {
+        socket.send(val);
+        addLog(`TX: ${val}`);
         cmdInput.value = "";
     }
-};
-
-// Permitir enviar com a tecla Enter
-cmdInput.onkeypress = (e) => { if (e.key === 'Enter') btnSend.click(); };
-
-// --- LOOP DE RENDERIZAÇÃO ---
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
 }
 
-// Ajuste de Janela
-window.onresize = () => {
-    const height = window.innerHeight - 220;
-    camera.aspect = window.innerWidth / height;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, height);
-};
+// Event Listeners
+btnSend.onclick = sendCommand;
+cmdInput.onkeydown = (e) => { if (e.key === "Enter") sendCommand(); };
 
-// INICIALIZAÇÃO
-connectToIDE();
-animate();
+// --- INICIALIZAÇÃO ---
+startBridgeConnection();
