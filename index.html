@@ -9,29 +9,31 @@
       --panel-height: 220px;
       --glass-bg: rgba(255, 255, 255, 0.8);
       --output-bg: #f5f5f7;
+      --accent: #1e90ff;
       --text: #1d1d1f;
       --green-led: #2ed573;
       --red-led: #ff4757;
     }
 
-    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #d1d1d1; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #d1d1d1; }
 
     #serial-panel {
       position: fixed; bottom: 0; left: 0; width: 100%; height: var(--panel-height);
-      background: var(--glass-bg); backdrop-filter: blur(25px); border-top: 1px solid rgba(0,0,0,0.1);
-      z-index: 100; display: flex;
+      background: var(--glass-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+      border-top: 1px solid rgba(0,0,0,0.1); z-index: 100; display: flex;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
     }
 
     .panel-section { padding: 16px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(0,0,0,0.05); }
     .controls-area { width: 250px; min-width: 250px; }
-    .header h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
 
-    /* STATUS UI */
+    /* LED Status */
     .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
-    
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red-led); transition: 0.4s; }
     
-    /* ESTADO ONLINE - ATIVADO PELO JS */
+    /* ESTADO CONECTADO (VERDE) */
     .dot.connected { 
       background: var(--green-led) !important; 
       box-shadow: 0 0 10px var(--green-led);
@@ -44,22 +46,23 @@
       100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
     }
 
-    .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; overflow: hidden; }
-    #serial-log { flex: 1; padding: 12px; font-family: monospace; font-size: 11px; overflow-y: auto; white-space: pre-wrap; }
-    
+    .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
+    #serial-log { flex: 1; padding: 12px; font-family: 'SF Mono', monospace; font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap; }
+
     .input-group { display: flex; gap: 6px; margin-top: auto; }
-    input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); }
-    #btn-send { background: #2f3542; color: white; border: none; border-radius: 8px; padding: 0 15px; cursor: pointer; }
+    input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: white; outline: none; font-size: 12px; }
+    #btn-send { width: 45px; height: 38px; background: #2f3542; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    .material-symbols-rounded { font-size: 18px; }
   </style>
 </head>
 <body>
   <div id="serial-panel">
     <div class="panel-section controls-area">
-      <div class="header" style="display:flex; justify-content: space-between;">
+      <div class="header">
         <h3><span class="material-symbols-rounded">settings_input_component</span> Hardware</h3>
         <div class="status-badge">
           <div id="status-dot" class="dot"></div>
-          <span id="status-text" style="color: #ff4757;">OFFLINE</span>
+          <span id="status-text" style="color: var(--red-led);">OFFLINE</span>
         </div>
       </div>
       <div class="input-group">
@@ -68,7 +71,7 @@
       </div>
     </div>
     <div class="output-container">
-      <div id="serial-log">Aguardando conexão...</div>
+      <div id="serial-log">Aguardando conexão com a IDE...</div>
     </div>
   </div>
   <script type="module" src="main.js"></script>

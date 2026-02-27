@@ -11,42 +11,43 @@ function connect() {
     socket = new WebSocket(BRIDGE_URL);
 
     socket.onopen = () => {
-        addLog("SISTEMA: Ponte conectada.");
+        addLog("SISTEMA: Conectado à ponte local.");
     };
 
     socket.onmessage = (event) => {
-        const msg = event.data;
+        const data = event.data;
 
-        if (msg.startsWith("STATUS:")) {
-            const isOnline = msg.split(":")[1] === "ON";
-            updateUI(isOnline);
-        } else {
-            addLog(`RX: ${msg}`);
+        // Trata a mudança de cor e texto do status
+        if (data.startsWith("STATUS:")) {
+            const state = data.split(":")[1];
+            if (state === "ON") {
+                statusDot.classList.add('connected');
+                statusText.innerText = "ONLINE";
+                statusText.style.color = "#2ed573";
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.innerText = "OFFLINE";
+                statusText.style.color = "#ff4757";
+            }
+            return;
         }
+
+        addLog(`RX: ${data}`);
     };
 
     socket.onclose = () => {
-        updateUI(false);
-        setTimeout(connect, 2000);
+        statusDot.classList.remove('connected');
+        statusText.innerText = "OFFLINE";
+        statusText.style.color = "#ff4757";
+        setTimeout(connect, 2000); // Reconexão automática
     };
 
     socket.onerror = () => socket.close();
 }
 
-function updateUI(online) {
-    if (online) {
-        statusDot.classList.add('connected');
-        statusText.innerText = "ONLINE";
-        statusText.style.color = "#2ed573";
-    } else {
-        statusDot.classList.remove('connected');
-        statusText.innerText = "OFFLINE";
-        statusText.style.color = "#ff4757";
-    }
-}
-
 function addLog(msg) {
-    logElement.innerText += `\n${msg}`;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    logElement.innerText += `\n[${time}] ${msg}`;
     logElement.scrollTop = logElement.scrollHeight;
 }
 
