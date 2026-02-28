@@ -42,7 +42,7 @@ function startBridgeConnection() {
 
         // Se não for status, é dado real (RX)
         if (message.length > 0) {
-            addLog(message); // Removi o "RX:" manual aqui para manter o log limpo
+            addLog(message); // Removi o "RX:" manual aqui para manter o log limpo.
         }
     };
 
