@@ -24,22 +24,19 @@ function startBridgeConnection() {
         addLog("SISTEMA: Ponte estabelecida. Sincronizando hardware...");
     };
 
-    // Processamento de mensagens recebidas
     socket.onmessage = (event) => {
-        const message = event.data;
+        const message = event.data.trim(); // Limpa espaços e quebras de linha
 
-        // Lógica de Status: Define se o Hardware (Arduino) está ligado ou não
         if (message.startsWith("STATUS:")) {
             const state = message.split(":")[1];
             updateStatusUI(state === "ON");
             return;
         }
 
-        // Lógica de Dados: Monitor Serial (RX)
+        // DEBUG: Veja se aparece no console do navegador (F12)
+        console.log("Chegou da Serial:", message);
+
         addLog(`RX: ${message}`);
-        
-        // --- AQUI VOCÊ ADICIONA SUA LÓGICA THREE.JS ---
-        // Exemplo: if(message === '1') cube.rotation.x += 0.5;
     };
 
     // Gerenciamento de falhas e reconexão automática
