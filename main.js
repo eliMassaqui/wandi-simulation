@@ -20,35 +20,34 @@ function startBridgeConnection() {
         addLog("SISTEMA: Ponte estabelecida.");
     };
 
-    socket.onmessage = (event) => {
-        const rawData = event.data.trim();
-        if (!rawData) return;
+socket.onmessage = (event) => {
+    // 1. Sanitização imediata: ignora mensagens vazias ou lixo de buffer
+    const data = event.data.trim();
+    if (!data) return;
 
-        // 1. TRATAMENTO DE STATUS (Curto-circuito)
-        if (rawData.startsWith("STATUS:")) {
-            updateStatusUI(rawData.split(":")[1] === "ON");
-            return;
-        }
+    // 2. Filtro de Status
+    if (data.startsWith("STATUS:")) {
+        updateStatusUI(data.split(":")[1] === "ON");
+        return;
+    }
 
-        // 2. FILTRAGEM DE DADOS (Regex Robusto)
-        // Captura apenas o primeiro número (inteiro ou decimal) que encontrar
-        const match = rawData.match(/[-+]?\d*\.?\d+/);
-        
-        if (match) {
-            const angulo = parseFloat(match[0]);
-            
-            // Proteção contra NaN ou valores fora de escala física (0-180)
-            if (!isNaN(angulo) && angulo >= -360 && angulo <= 360) {
-                simulador.atualizarRotacao(angulo);
-            }
+    // 3. Extração ultra-rápida de números (Prevenção contra qualquer string suja)
+    // Este Regex pega o primeiro número que aparecer, não importa o texto ao redor
+    const match = data.match(/-?\d+(\.\d+)?/);
+    if (match) {
+        const valor = parseFloat(match[0]);
+        if (!isNaN(valor)) {
+            simulador.atualizarRotacao(valor);
         }
+    }
 
-        // 3. LOG SELETIVO (Não logar tudo se for rápido demais)
-        // Dica: Só logue se não for um dado repetitivo de ângulo ou use um contador
-        if (!rawData.includes("Angulo:")) { 
-            addLog(rawData); 
-        }
-    };
+    // 4. Log Inteligente: Só logamos se não for uma avalanche de ângulos
+    // Se o dado for muito rápido, o log é o que trava o navegador.
+    // Aqui decidimos logar apenas mensagens que NÃO sejam apenas números.
+    if (isNaN(data)) {
+        addLog(data);
+    }
+};
 
     socket.onclose = () => {
         updateStatusUI(false);
@@ -64,22 +63,24 @@ function updateStatusUI(isOnline) {
     statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
 }
 
+// Limite máximo de linhas para evitar consumo de RAM
+const MAX_LOG_LINES = 20; 
+
 function addLog(msg) {
     if (!logElement) return;
 
-    // Criamos um fragmento ou elemento individual para não re-renderizar todo o texto
     const line = document.createElement('div');
-    line.style.borderBottom = "1px solid #444";
+    // Visual limpo: apenas o texto, sem bordas ou linhas
     line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
     
     logElement.appendChild(line);
 
-    // MANTÉM APENAS AS ÚLTIMAS 30 LINHAS
-    // Isso impede que o HTML consuma toda a RAM do PC
-    while (logElement.childNodes.length > 30) {
+    // Remove o excesso de forma eficiente
+    while (logElement.childNodes.length > MAX_LOG_LINES) {
         logElement.removeChild(logElement.firstChild);
     }
 
+    // Scroll suave apenas se necessário
     logElement.scrollTop = logElement.scrollHeight;
 }
 

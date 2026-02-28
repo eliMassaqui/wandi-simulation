@@ -42,28 +42,28 @@ export class WandiSimulador {
         this.camera.lookAt(0, 0, 0);
     }
 
-    atualizarRotacao(graus) {
-        const novoAlvo = graus * (Math.PI / 180);
-        
-        // Só atualiza se a diferença for relevante (evita processamento de ruído)
-        if (Math.abs(this.targetRotation - novoAlvo) > 0.001) {
-            this.targetRotation = novoAlvo;
-        }
-    }
-    animate() {
-        requestAnimationFrame(() => this.animate());
+atualizarRotacao(graus) {
+    // Converte e armazena apenas o alvo. O processamento pesado fica no loop de animação.
+    this.targetRotation = graus * (Math.PI / 180);
+}
 
-        // LÓGICA DE GIRO RÁPIDO:
-        // O cubo persegue o alvo (targetRotation) constantemente.
-        // Quando o sensor pula de 180 para 0, o 'lerp' faz ele girar rápido de volta
+animate() {
+    requestAnimationFrame(() => this.animate());
+
+    // Suavização (Lerp): 0.1 é muito suave, 0.5 é muito rápido.
+    // Usar 0.3 oferece um balanço perfeito entre resposta e leveza.
+    const diferenca = Math.abs(this.cube.rotation.y - this.targetRotation);
+    
+    if (diferenca > 0.0001) { // Só processa se houver movimento real
         this.cube.rotation.y = THREE.MathUtils.lerp(
             this.cube.rotation.y, 
             this.targetRotation, 
-            this.lerpSpeed
+            0.3 
         );
-
-        this.renderer.render(this.scene, this.camera);
     }
+
+    this.renderer.render(this.scene, this.camera);
+}
 
     onResize() {
         this.camera.aspect = window.innerWidth / window.innerHeight;
