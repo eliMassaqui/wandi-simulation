@@ -92,6 +92,37 @@ function sendCommand() {
     }
 }
 
+// ==========================================
+// LÓGICA DA SIDEBAR DE CONTROLO
+// ==========================================
+function setupSidebarControls() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    // Usa 'Event Delegation' (mais leve e rápido que adicionar listener em cada botão)
+    sidebar.addEventListener('click', (event) => {
+        const btn = event.target.closest('.cmd-btn');
+        if (!btn) return; // Ignora cliques fora dos botões
+
+        const command = btn.getAttribute('data-cmd');
+        
+        if (socket?.readyState === WebSocket.OPEN) {
+            socket.send(command);
+            addLog(`UI_TX: ${command}`); // Log indicando que veio da Interface
+            
+            // Efeito visual sutil de sucesso no botão
+            const originalBg = btn.style.background;
+            btn.style.filter = "brightness(1.5)";
+            setTimeout(() => { btn.style.filter = "none"; }, 150);
+        } else {
+            addLog("ERRO: Placa offline. Comando ignorado.");
+        }
+    });
+}
+
+// Inicializa a escuta da sidebar
+setupSidebarControls();
+
 btnSend.onclick = sendCommand;
 cmdInput.onkeydown = (e) => { if (e.key === "Enter") sendCommand(); };
 
