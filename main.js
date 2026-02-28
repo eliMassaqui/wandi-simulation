@@ -21,27 +21,32 @@ function startBridgeConnection() {
     };
 
     socket.onmessage = (event) => {
-        const data = event.data.trim();
+        const rawData = event.data.trim();
+        if (!rawData) return;
 
-        // 1. Tratamento de Status
-        if (data.startsWith("STATUS:")) {
-            updateStatusUI(data.split(":")[1] === "ON");
+        // 1. TRATAMENTO DE STATUS (Curto-circuito)
+        if (rawData.startsWith("STATUS:")) {
+            updateStatusUI(rawData.split(":")[1] === "ON");
             return;
         }
 
-        // 2. Tratamento de Dados (Acompanhamento TOTAL)
-        if (data.length > 0) {
-            addLog(data); 
-
-            // Extrai o número (ex: "Angulo: 90" vira 90)
-            const match = data.match(/[-+]?[0-9]*\.?[0-9]+/);
-            if (match) {
-                const angulo = parseFloat(match[0]);
-                if (!isNaN(angulo)) {
-                    // Atualização imediata sem lerp/suavização
-                    simulador.atualizarRotacao(angulo);
-                }
+        // 2. FILTRAGEM DE DADOS (Regex Robusto)
+        // Captura apenas o primeiro número (inteiro ou decimal) que encontrar
+        const match = rawData.match(/[-+]?\d*\.?\d+/);
+        
+        if (match) {
+            const angulo = parseFloat(match[0]);
+            
+            // Proteção contra NaN ou valores fora de escala física (0-180)
+            if (!isNaN(angulo) && angulo >= -360 && angulo <= 360) {
+                simulador.atualizarRotacao(angulo);
             }
+        }
+
+        // 3. LOG SELETIVO (Não logar tudo se for rápido demais)
+        // Dica: Só logue se não for um dado repetitivo de ângulo ou use um contador
+        if (!rawData.includes("Angulo:")) { 
+            addLog(rawData); 
         }
     };
 
@@ -61,8 +66,20 @@ function updateStatusUI(isOnline) {
 
 function addLog(msg) {
     if (!logElement) return;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    logElement.innerText += `\n[${time}] ${msg}`;
+
+    // Criamos um fragmento ou elemento individual para não re-renderizar todo o texto
+    const line = document.createElement('div');
+    line.style.borderBottom = "1px solid #444";
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    
+    logElement.appendChild(line);
+
+    // MANTÉM APENAS AS ÚLTIMAS 30 LINHAS
+    // Isso impede que o HTML consuma toda a RAM do PC
+    while (logElement.childNodes.length > 30) {
+        logElement.removeChild(logElement.firstChild);
+    }
+
     logElement.scrollTop = logElement.scrollHeight;
 }
 

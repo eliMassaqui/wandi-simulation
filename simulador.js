@@ -42,14 +42,14 @@ export class WandiSimulador {
         this.camera.lookAt(0, 0, 0);
     }
 
-    /**
-     * Recebe o valor da serial e define o alvo.
-     */
     atualizarRotacao(graus) {
-        // Atualiza apenas o alvo da rotação
-        this.targetRotation = graus * (Math.PI / 180);
+        const novoAlvo = graus * (Math.PI / 180);
+        
+        // Só atualiza se a diferença for relevante (evita processamento de ruído)
+        if (Math.abs(this.targetRotation - novoAlvo) > 0.001) {
+            this.targetRotation = novoAlvo;
+        }
     }
-
     animate() {
         requestAnimationFrame(() => this.animate());
 
