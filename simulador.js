@@ -65,36 +65,9 @@ animate() {
     this.renderer.render(this.scene, this.camera);
 }
 
-// No constructor, garanta que o renderer use alpha se quiser um fundo mais integrado
-// ou apenas mantenha a performance.
-
-onResize() {
-    // 1. Pegamos o tamanho total da janela
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    // 2. Subtraímos o espaço ocupado pela UI (Variáveis do CSS)
-    // Sidebar: 280px | Painel: 220px
-    const sidebarWidth = 280; 
-    const panelHeight = 220;
-
-    const availableWidth = width - sidebarWidth;
-    const availableHeight = height - panelHeight;
-
-    // 3. Atualizamos a câmera para o novo aspecto da área livre
-    this.camera.aspect = availableWidth / availableHeight;
-    this.camera.updateProjectionMatrix();
-
-    // 4. Redimensionamos o renderer para a tela cheia, 
-    // mas vamos mover o "olho" da câmera
-    this.renderer.setSize(width, height);
-
-    // 5. O SEGREDO: Definimos o Viewport para desenhar apenas na área livre
-    // Os parâmetros são: (x, y, largura, altura)
-    // O Three.js conta o Y de baixo para cima, então y = panelHeight
-    this.renderer.setViewport(0, panelHeight, availableWidth, availableHeight);
-    this.renderer.setScissor(0, panelHeight, availableWidth, availableHeight);
-    this.renderer.setScissorTest(true);
+    onResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
- }
-
+}
