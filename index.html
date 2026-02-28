@@ -1,203 +1,85 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wandi Simulation Studio - Full Interface</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <meta charset="UTF-8" />
+  <title>Wandi Simulation Studio</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    :root {
+      --panel-height: 220px;
+      --glass-bg: rgba(255, 255, 255, 0.8);
+      --output-bg: #f5f5f7;
+      --accent: #1e90ff;
+      --text: #1d1d1f;
+      --green-led: #2ed573;
+    }
+
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #d1d1d1; }
+    canvas { position: fixed; top: 0; left: 0; z-index: 1; }
+
+    #serial-panel {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: var(--panel-height);
+      background: var(--glass-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+      border-top: 1px solid rgba(0,0,0,0.1); z-index: 100; display: flex;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+    }
+
+    .panel-section { padding: 16px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(0,0,0,0.05); }
+    .controls-area { width: 250px; min-width: 250px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
+
+    /* LED Status com Pulsação */
+    .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
     
-    <style>
-        /* --- ESTILOS ORIGINAIS DA SIDEBAR --- */
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.4);
-            --card-inner: rgba(255, 255, 255, 0.15);
-            --accent-blue: #4A90E2;
-            --neutral-white: rgba(255, 255, 255, 0.85);
-            --tech-dark: #2C2C2E;
-            --text-main: #1C1C1E;
-            --text-mute: rgba(28, 28, 30, 0.6);
-            --blur: blur(30px);
-            --shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.06);
-            --transition: all 0.2s ease-in-out;
-            /* Variáveis do Painel Serial */
-            --panel-height: 220px;
-            --serial-glass: rgba(255, 255, 255, 0.8);
-            --output-bg: #f5f5f7;
-            --accent: #1e90ff;
-            --text: #1d1d1f;
-            --green-led: #2ed573;
-        }
+    .dot.connected { 
+      background: var(--green-led); 
+      box-shadow: 0 0 10px var(--green-led);
+      animation: pulse-green 2s infinite; 
+    }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+    @keyframes pulse-green {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(46, 213, 115, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #d1d1d1; /* Fundo do segundo código */
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
+    .info-box { background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; font-size: 11px; color: #666; border: 1px solid rgba(0,0,0,0.02); }
+    .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
+    .output-header { padding: 6px 12px; font-size: 10px; font-weight: 700; color: #999; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; }
+    #serial-log { flex: 1; padding: 12px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap; }
 
-        /* Sidebar Principal - Lógica Original */
-        .wandi-panel {
-            position: fixed;
-            right: 20px;
-            top: 40%; /* Ajustado levemente para não colidir com o painel inferior em telas baixas */
-            transform: translateY(-50%);
-            width: 235px;
-            height: 60vh;
-            background: var(--glass-bg);
-            backdrop-filter: var(--blur);
-            -webkit-backdrop-filter: var(--blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 22px;
-            box-shadow: var(--shadow);
-            display: flex;
-            flex-direction: column;
-            z-index: 1000;
-        }
-
-        .panel-header {
-            padding: 20px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
-        }
-
-        .header-icon { font-size: 20px !important; color: var(--accent-blue); }
-        .panel-header h1 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-main); }
-
-        .panel-body { flex: 1; padding: 16px; overflow-y: auto; }
-        .panel-body::-webkit-scrollbar { width: 3px; }
-        .panel-body::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
-
-        .control-group {
-            background: var(--card-inner);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .group-label { display: block; font-size: 10px; font-weight: 500; color: var(--text-mute); margin-bottom: 10px; padding-left: 2px; }
-
-        .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-
-        .btn {
-            height: 36px; border: none; border-radius: 8px; font-size: 11px; font-weight: 600;
-            cursor: pointer; transition: var(--transition); display: flex; align-items: center;
-            justify-content: center; outline: none;
-        }
-        .btn:active { transform: scale(0.95); }
-        .btn-blue { background: var(--accent-blue); color: white; opacity: 0.85; }
-        .btn-white { background: var(--neutral-white); color: var(--text-main); box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-        .btn-dark { background: var(--tech-dark); color: white; opacity: 0.9; }
-        .btn:hover { opacity: 1; filter: brightness(1.05); }
-
-        /* --- ESTILOS ORIGINAIS DO PAINEL SERIAL --- */
-        #serial-panel {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: var(--panel-height);
-            background: var(--serial-glass); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border-top: 1px solid rgba(0,0,0,0.1); z-index: 101; display: flex;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
-        }
-
-        .panel-section { padding: 16px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(0,0,0,0.05); }
-        .controls-area { width: 250px; min-width: 250px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
-
-        .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
-        .dot.connected { background: var(--green-led); box-shadow: 0 0 10px var(--green-led); animation: pulse-green 2s infinite; }
-
-        @keyframes pulse-green {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(46, 213, 115, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
-        }
-
-        .info-box { background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; font-size: 11px; color: #666; border: 1px solid rgba(0,0,0,0.02); }
-        .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
-        .output-header { padding: 6px 12px; font-size: 10px; font-weight: 700; color: #999; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; }
-        #serial-log { flex: 1; padding: 12px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap; }
-
-        .input-group { display: flex; gap: 6px; margin-top: auto; }
-        input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: white; outline: none; font-size: 12px; }
-        #btn-send { width: 45px; height: 38px; background: #2f3542; color: white; border: none; border-radius: 8px; cursor: pointer; }
-    </style>
+    .input-group { display: flex; gap: 6px; margin-top: auto; }
+    input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: white; outline: none; font-size: 12px; }
+    #btn-send { width: 45px; height: 38px; background: #2f3542; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    .material-symbols-rounded { font-size: 18px; }
+  </style>
 </head>
 <body>
 
-    <nav class="wandi-panel">
-        <header class="panel-header">
-            <span class="material-symbols-rounded header-icon">precision_manufacturing</span>
-            <h1>Painel Wandi</h1>
-        </header>
-
-        <div class="panel-body">
-            <section class="control-group">
-                <span class="group-label">Wandi Robot</span>
-                <div class="btn-grid">
-                    <button class="btn btn-blue">J1</button>
-                    <button class="btn btn-blue">J2</button>
-                    <button class="btn btn-blue">J3</button>
-                    <button class="btn btn-blue">J4</button>
-                    <button class="btn btn-blue">J5</button>
-                    <button class="btn btn-blue">J6</button>
-                </div>
-            </section>
-
-            <section class="control-group">
-                <span class="group-label">Parte Literal</span>
-                <div class="btn-grid">
-                    <button class="btn btn-white">A</button>
-                    <button class="btn btn-white">B</button>
-                    <button class="btn btn-white">C</button>
-                    <button class="btn btn-white">D</button>
-                    <button class="btn btn-white">E</button>
-                    <button class="btn btn-white">F</button>
-                </div>
-            </section>
-
-            <section class="control-group">
-                <span class="group-label">Parte Numérica</span>
-                <div class="btn-grid">
-                    <button class="btn btn-dark">0</button>
-                    <button class="btn btn-dark">1</button>
-                    <button class="btn btn-dark">2</button>
-                    <button class="btn btn-dark">3</button>
-                    <button class="btn btn-dark">4</button>
-                    <button class="btn btn-dark">5</button>
-                </div>
-            </section>
+  <div id="serial-panel">
+    <div class="panel-section controls-area">
+      <div class="header">
+        <h3><span class="material-symbols-rounded">settings_input_component</span> Hardware</h3>
+        <div class="status-badge">
+          <div id="status-dot" class="dot"></div>
+          <span id="status-text">OFFLINE</span>
         </div>
-    </nav>
-
-    <div id="serial-panel">
-        <div class="panel-section controls-area">
-            <div class="header">
-                <h3><span class="material-symbols-rounded">settings_input_component</span> Hardware</h3>
-                <div class="status-badge">
-                    <div id="status-dot" class="dot"></div>
-                    <span id="status-text">OFFLINE</span>
-                </div>
-            </div>
-            <div class="info-box">Conectado via Bridge WebSocket (localhost:8765)</div>
-            <div class="input-group">
-                <input type="text" id="serial-input" placeholder="Comando..." />
-                <button id="btn-send"><span class="material-symbols-rounded">send</span></button>
-            </div>
-        </div>
-
-        <div class="output-container">
-            <div class="output-header">MONITOR SERIAL (LIVE)</div>
-            <div id="serial-log">Aguardando conexão com a IDE...</div>
-        </div>
+      </div>
+      <div class="info-box">Conectado via Bridge WebSocket (localhost:8765)</div>
+      <div class="input-group">
+        <input type="text" id="serial-input" placeholder="Comando..." />
+        <button id="btn-send"><span class="material-symbols-rounded">send</span></button>
+      </div>
     </div>
 
-    <script type="module" src="main.js"></script>
+    <div class="output-container">
+      <div class="output-header">MONITOR SERIAL (LIVE)</div>
+      <div id="serial-log">Aguardando conexão com a IDE...</div>
+    </div>
+  </div>
+
+  <script type="module" src="main.js"></script>
 </body>
 </html>
