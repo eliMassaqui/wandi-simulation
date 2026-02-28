@@ -82,40 +82,44 @@ function addLog(msg) {
     logElement.scrollTop = logElement.scrollHeight;
 }
 
-// Envio de comandos
+// ... (seu código de inicialização do socket)
+
 function sendCommand() {
     const val = cmdInput.value.trim();
+    
+    // Verificação lúcida: socket aberto e entrada não vazia
     if (socket?.readyState === WebSocket.OPEN && val !== "") {
-        socket.send(val);
+        
+        // ENVIAR PARA A PLACA: 
+        // Adicionamos \n para que o Serial.readStringUntil('\n') da placa funcione
+        socket.send(val + "\n"); 
+        
         addLog(`TX: ${val}`);
         cmdInput.value = "";
+        cmdInput.focus(); // Mantém o foco para o próximo comando
+    } else {
+        addLog("ERRO: Falha ao enviar. Verifique a conexão com a ponte.");
     }
 }
 
-// ==========================================
-// LÓGICA DA SIDEBAR DE CONTROLO
-// ==========================================
+// Lógica da Sidebar corrigida para enviar com terminador
 function setupSidebarControls() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
-    // Usa 'Event Delegation' (mais leve e rápido que adicionar listener em cada botão)
     sidebar.addEventListener('click', (event) => {
         const btn = event.target.closest('.cmd-btn');
-        if (!btn) return; // Ignora cliques fora dos botões
+        if (!btn) return;
 
         const command = btn.getAttribute('data-cmd');
         
         if (socket?.readyState === WebSocket.OPEN) {
-            socket.send(command);
-            addLog(`UI_TX: ${command}`); // Log indicando que veio da Interface
+            // Enviamos o comando do botão + nova linha
+            socket.send(command + "\n"); 
+            addLog(`UI_TX: ${command}`);
             
-            // Efeito visual sutil de sucesso no botão
-            const originalBg = btn.style.background;
             btn.style.filter = "brightness(1.5)";
             setTimeout(() => { btn.style.filter = "none"; }, 150);
-        } else {
-            addLog("ERRO: Placa offline. Comando ignorado.");
         }
     });
 }
