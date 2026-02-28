@@ -1,40 +1,40 @@
 import { WandiSimulador } from './simulador.js';
 
+// Elementos da UI
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const logElement = document.getElementById('serial-log');
 const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
 
+// Inicializa Simulador
 const simulador = new WandiSimulador();
 window.addEventListener('resize', () => simulador.onResize());
 
 let socket = null;
 const BRIDGE_URL = "ws://127.0.0.1:8765";
-const MAX_LOG_LINES = 15; // Mantém o painel leve
+const RECONNECT_INTERVAL = 2000;
 
 function startBridgeConnection() {
     socket = new WebSocket(BRIDGE_URL);
 
     socket.onopen = () => {
-        logElement.innerText = ""; // Limpa o "Aguardando conexão..."
         addLog("SISTEMA: Ponte estabelecida.");
         updateStatusUI(true);
     };
 
     socket.onmessage = (event) => {
-        const data = event.data.trim();
-        if (!data) return;
+        const rawData = event.data.trim();
+        if (!rawData) return;
 
-        // 1. Tratamento de Status
-        if (data.startsWith("STATUS:")) {
-            updateStatusUI(data.split(":")[1] === "ON");
+        // 1. TRATAMENTO DE STATUS
+        if (rawData.startsWith("STATUS:")) {
+            updateStatusUI(rawData.split(":")[1] === "ON");
             return;
         }
 
-        // 2. Extração de Números (Filtragem Blindada)
-        // Pega qualquer número na string para mover o cubo
-        const match = data.match(/-?\d+(\.\d+)?/);
+        // 2. FILTRAGEM DE DADOS PARA O CUBO
+        const match = rawData.match(/[-+]?\d*\.?\d+/);
         if (match) {
             const angulo = parseFloat(match[0]);
             if (!isNaN(angulo)) {
@@ -42,67 +42,56 @@ function startBridgeConnection() {
             }
         }
 
-        // 3. Log Inteligente (O segredo da leveza)
-        // Se a mensagem for só um número ou "Angulo: X", não logamos para poupar CPU.
-        // Logamos apenas mensagens de texto ou erros importantes.
-        if (isNaN(data) && !data.includes("Angulo:")) {
-            addLog(data);
+        // 3. LOG SELETIVO
+        if (!rawData.includes("Angulo:")) { 
+            addLog(rawData); 
         }
     };
 
     socket.onclose = () => {
         updateStatusUI(false);
-        setTimeout(startBridgeConnection, 2000);
+        setTimeout(startBridgeConnection, RECONNECT_INTERVAL);
     };
 
     socket.onerror = () => socket.close();
 }
 
 function updateStatusUI(isOnline) {
-    statusDot.classList.toggle('connected', isOnline);
-    statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
-    statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
+    statusDot?.classList.toggle('connected', isOnline);
+    if (statusText) {
+        statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
+        statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
+    }
 }
 
 function addLog(msg) {
     if (!logElement) return;
-
-    // Usamos div simples sem estilos extras para renderização ultra rápida.
     const line = document.createElement('div');
-    line.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
+    line.style.borderBottom = "1px solid rgba(0,0,0,0.05)";
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
     
     logElement.appendChild(line);
-
-    // Remove linhas antigas para não pesar a memória do navegador
-    while (logElement.childNodes.length > MAX_LOG_LINES) {
+    while (logElement.childNodes.length > 30) {
         logElement.removeChild(logElement.firstChild);
     }
-
-    // Auto-scroll
     logElement.scrollTop = logElement.scrollHeight;
 }
 
-// ... (seu código de inicialização do socket)
+// ==========================================
+// ENVIO DE COMANDOS (Input e Sidebar)
+// ==========================================
 
-function sendCommand() {
-    const val = cmdInput.value.trim();
-    
-    // Verificação lúcida: socket aberto e entrada não vazia
-    if (socket?.readyState === WebSocket.OPEN && val !== "") {
-        
-        // ENVIAR PARA A PLACA: 
-        // Adicionamos \n para que o Serial.readStringUntil('\n') da placa funcione
-        socket.send(val + "\n"); 
-        
-        addLog(`TX: ${val}`);
-        cmdInput.value = "";
-        cmdInput.focus(); // Mantém o foco para o próximo comando
+function sendRawCommand(cmd) {
+    if (socket?.readyState === WebSocket.OPEN && cmd !== "") {
+        // Enviamos com \n para garantir que a placa processe a linha
+        socket.send(cmd + "\n");
+        addLog(`TX: ${cmd}`);
     } else {
-        addLog("ERRO: Falha ao enviar. Verifique a conexão com a ponte.");
+        addLog("ERRO: Ponte desconectada.");
     }
 }
 
-// Lógica da Sidebar corrigida para enviar com terminador
+// Escuta a Sidebar (Botões J1, J2, números, etc)
 function setupSidebarControls() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
@@ -112,22 +101,29 @@ function setupSidebarControls() {
         if (!btn) return;
 
         const command = btn.getAttribute('data-cmd');
-        
-        if (socket?.readyState === WebSocket.OPEN) {
-            // Enviamos o comando do botão + nova linha
-            socket.send(command + "\n"); 
-            addLog(`UI_TX: ${command}`);
+        if (command) {
+            sendRawCommand(command);
             
+            // Feedback visual no botão
             btn.style.filter = "brightness(1.5)";
             setTimeout(() => { btn.style.filter = "none"; }, 150);
         }
     });
 }
 
-// Inicializa a escuta da sidebar
+// Eventos de Input Manual
+btnSend.onclick = () => {
+    sendRawCommand(cmdInput.value.trim());
+    cmdInput.value = "";
+};
+
+cmdInput.onkeydown = (e) => { 
+    if (e.key === "Enter") {
+        sendRawCommand(cmdInput.value.trim());
+        cmdInput.value = "";
+    }
+};
+
+// Inicialização Geral
 setupSidebarControls();
-
-btnSend.onclick = sendCommand;
-cmdInput.onkeydown = (e) => { if (e.key === "Enter") sendCommand(); };
-
 startBridgeConnection();
