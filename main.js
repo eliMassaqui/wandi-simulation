@@ -25,7 +25,7 @@ function startBridgeConnection() {
     };
 
     socket.onmessage = (event) => {
-        const message = event.data.trim(); // Limpa espaços e quebras de linha
+        const message = event.data.trim(); // Limpa espaços e quebras de linha.
 
         if (message.startsWith("STATUS:")) {
             const state = message.split(":")[1];
@@ -41,7 +41,7 @@ function startBridgeConnection() {
 
     // Gerenciamento de falhas e reconexão automática
     socket.onclose = () => {
-        updateStatusUI(false); // Garante que fique OFFLINE na interface
+        updateStatusUI(false); // Garante que fique OFFLINE na interface.
         console.warn("⚠️ Conexão perdida. Tentando reconectar automaticamente...");
         
         // Limpa o socket atual e agenda nova tentativa
