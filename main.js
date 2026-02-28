@@ -31,21 +31,23 @@ function startBridgeConnection() {
     };
 
     socket.onmessage = (event) => {
-        const message = event.data.trim();
+        const data = event.data.trim();
 
-        // 1. Tratamento de Status do Hardware
-        if (message.startsWith("STATUS:")) {
-            const state = message.split(":")[1];
-            const isOnline = state === "ON";
-            
-            updateStatusUI(isOnline);
-            
-            // Limpeza automática do log ao conectar
-            if (isOnline && logElement) {
-                logElement.innerText = "--- Monitor Serial Iniciado ---";
-            }
+        if (data.startsWith("STATUS:")) {
+            updateStatusUI(data.split(":")[1] === "ON");
             return;
         }
+
+        // Extrai apenas o número do Log (Ex: "Angulo: 155.00")
+        const match = data.match(/[-+]?[0-9]*\.?[0-9]+/);
+        if (match) {
+            const angulo = parseFloat(match[0]);
+            if (!isNaN(angulo)) {
+                // Chamada direta para resposta imediata
+                simulador.atualizarRotacao(angulo);
+            }
+        }
+    };
 
         // 2. Tratamento de Dados Reais (RX) e Rotação do Cubo
         if (message.length > 0) {
