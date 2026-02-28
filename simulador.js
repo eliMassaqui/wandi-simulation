@@ -95,4 +95,6 @@ onResize() {
     this.renderer.setViewport(0, panelHeight, availableWidth, availableHeight);
     this.renderer.setScissor(0, panelHeight, availableWidth, availableHeight);
     this.renderer.setScissorTest(true);
-}
+    }
+ }
+
