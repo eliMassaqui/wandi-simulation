@@ -1,52 +1,60 @@
 import { WandiSimulador } from './simulador.js';
 
+// 1. Referências de Elementos
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const logElement = document.getElementById('serial-log');
 const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
+const sidebar = document.getElementById('sidebar');
 
+// 2. Inicialização do Simulador
 const simulador = new WandiSimulador();
 window.addEventListener('resize', () => simulador.onResize());
 
 let socket = null;
 const BRIDGE_URL = "ws://127.0.0.1:8765";
-const MAX_LOG_LINES = 15; // Mantém o painel leve
 
+// 3. Função de Envio (Centralizada)
+function sendRawCommand(cmd) {
+    if (!cmd) return;
+    
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        // Enviamos o comando com terminador \n para a placa reconhecer
+        socket.send(cmd + "\n");
+        addLog(`TX: ${cmd}`);
+        console.log("Comando enviado via WS:", cmd);
+    } else {
+        addLog("ERRO: Ponte desconectada. Comando não enviado.");
+        console.warn("Tentativa de envio sem socket aberto.");
+    }
+}
+
+// 4. Conexão com a Ponte
 function startBridgeConnection() {
+    console.log("Tentando conectar à ponte...");
     socket = new WebSocket(BRIDGE_URL);
 
     socket.onopen = () => {
-        logElement.innerText = ""; // Limpa o "Aguardando conexão..."
-        addLog("SISTEMA: Ponte estabelecida.");
+        addLog("SISTEMA: Conectado à Ponte.");
         updateStatusUI(true);
     };
 
     socket.onmessage = (event) => {
-        const data = event.data.trim();
-        if (!data) return;
+        const rawData = event.data.trim();
+        if (!rawData) return;
 
-        // 1. Tratamento de Status
-        if (data.startsWith("STATUS:")) {
-            updateStatusUI(data.split(":")[1] === "ON");
-            return;
-        }
-
-        // 2. Extração de Números (Filtragem Blindada)
-        // Pega qualquer número na string para mover o cubo
-        const match = data.match(/-?\d+(\.\d+)?/);
-        if (match) {
-            const angulo = parseFloat(match[0]);
-            if (!isNaN(angulo)) {
+        // Tratar dados recebidos (Status ou Ângulo)
+        if (rawData.startsWith("STATUS:")) {
+            updateStatusUI(rawData.split(":")[1] === "ON");
+        } else {
+            const match = rawData.match(/[-+]?\d*\.?\d+/);
+            if (match) {
+                const angulo = parseFloat(match[0]);
                 simulador.atualizarRotacao(angulo);
             }
-        }
-
-        // 3. Log Inteligente (O segredo da leveza)
-        // Se a mensagem for só um número ou "Angulo: X", não logamos para poupar CPU.
-        // Logamos apenas mensagens de texto ou erros importantes.
-        if (isNaN(data) && !data.includes("Angulo:")) {
-            addLog(data);
+            // Só loga no painel se não for excessivamente rápido
+            if (!rawData.includes("Angulo:")) addLog(rawData);
         }
     };
 
@@ -55,44 +63,72 @@ function startBridgeConnection() {
         setTimeout(startBridgeConnection, 2000);
     };
 
-    socket.onerror = () => socket.close();
+    socket.onerror = (err) => {
+        console.error("Erro no WebSocket:", err);
+        socket.close();
+    };
 }
 
+// 5. Configuração de Eventos (O segredo do funcionamento)
+function initEvents() {
+    // Evento do Botão de Envio de Texto
+    if (btnSend) {
+        btnSend.onclick = () => {
+            sendRawCommand(cmdInput.value.trim());
+            cmdInput.value = "";
+        };
+    }
+
+    // Evento de Tecla Enter no Input
+    if (cmdInput) {
+        cmdInput.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                sendRawCommand(cmdInput.value.trim());
+                cmdInput.value = "";
+            }
+        };
+    }
+
+    // Evento da Sidebar (Event Delegation)
+    if (sidebar) {
+        sidebar.addEventListener('click', (event) => {
+            const btn = event.target.closest('.cmd-btn');
+            if (!btn) return;
+
+            const command = btn.getAttribute('data-cmd');
+            sendRawCommand(command);
+
+            // Efeito visual
+            btn.style.filter = "brightness(1.5)";
+            setTimeout(() => { btn.style.filter = "none"; }, 150);
+        });
+        console.log("Eventos da Sidebar configurados.");
+    } else {
+        console.error("Sidebar não encontrada!");
+    }
+}
+
+// 6. Funções Auxiliares
 function updateStatusUI(isOnline) {
-    statusDot.classList.toggle('connected', isOnline);
-    statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
-    statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
+    if (statusDot) statusDot.classList.toggle('connected', isOnline);
+    if (statusText) {
+        statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
+        statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
+    }
 }
 
 function addLog(msg) {
     if (!logElement) return;
-
-    // Usamos div simples sem estilos extras para renderização ultra rápida.
     const line = document.createElement('div');
     line.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
-    
     logElement.appendChild(line);
-
-    // Remove linhas antigas para não pesar a memória do navegador
-    while (logElement.childNodes.length > MAX_LOG_LINES) {
+    
+    while (logElement.childNodes.length > 20) {
         logElement.removeChild(logElement.firstChild);
     }
-
-    // Auto-scroll
     logElement.scrollTop = logElement.scrollHeight;
 }
 
-// Envio de comandos
-function sendCommand() {
-    const val = cmdInput.value.trim();
-    if (socket?.readyState === WebSocket.OPEN && val !== "") {
-        socket.send(val);
-        addLog(`TX: ${val}`);
-        cmdInput.value = "";
-    }
-}
-
-btnSend.onclick = sendCommand;
-cmdInput.onkeydown = (e) => { if (e.key === "Enter") sendCommand(); };
-
+// Inicializar tudo
+initEvents();
 startBridgeConnection();
