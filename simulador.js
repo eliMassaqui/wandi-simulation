@@ -55,7 +55,7 @@ export class WandiSimulador {
 
         // LÓGICA DE GIRO RÁPIDO:
         // O cubo persegue o alvo (targetRotation) constantemente.
-        // Quando o sensor pula de 180 para 0, o 'lerp' faz ele girar rápido de volta.
+        // Quando o sensor pula de 180 para 0, o 'lerp' faz ele girar rápido de volta
         this.cube.rotation.y = THREE.MathUtils.lerp(
             this.cube.rotation.y, 
             this.targetRotation, 
