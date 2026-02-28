@@ -1,25 +1,42 @@
 import { WandiSimulador } from './simulador.js';
 
-// Elementos da UI
+// 1. Referências de Elementos
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const logElement = document.getElementById('serial-log');
 const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
+const sidebar = document.getElementById('sidebar');
 
-// Inicializa Simulador
+// 2. Inicialização do Simulador
 const simulador = new WandiSimulador();
 window.addEventListener('resize', () => simulador.onResize());
 
 let socket = null;
 const BRIDGE_URL = "ws://127.0.0.1:8765";
-const RECONNECT_INTERVAL = 2000;
 
+// 3. Função de Envio (Centralizada)
+function sendRawCommand(cmd) {
+    if (!cmd) return;
+    
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        // Enviamos o comando com terminador \n para a placa reconhecer
+        socket.send(cmd + "\n");
+        addLog(`TX: ${cmd}`);
+        console.log("Comando enviado via WS:", cmd);
+    } else {
+        addLog("ERRO: Ponte desconectada. Comando não enviado.");
+        console.warn("Tentativa de envio sem socket aberto.");
+    }
+}
+
+// 4. Conexão com a Ponte
 function startBridgeConnection() {
+    console.log("Tentando conectar à ponte...");
     socket = new WebSocket(BRIDGE_URL);
 
     socket.onopen = () => {
-        addLog("SISTEMA: Ponte estabelecida.");
+        addLog("SISTEMA: Conectado à Ponte.");
         updateStatusUI(true);
     };
 
@@ -27,37 +44,73 @@ function startBridgeConnection() {
         const rawData = event.data.trim();
         if (!rawData) return;
 
-        // 1. TRATAMENTO DE STATUS
+        // Tratar dados recebidos (Status ou Ângulo)
         if (rawData.startsWith("STATUS:")) {
             updateStatusUI(rawData.split(":")[1] === "ON");
-            return;
-        }
-
-        // 2. FILTRAGEM DE DADOS PARA O CUBO
-        const match = rawData.match(/[-+]?\d*\.?\d+/);
-        if (match) {
-            const angulo = parseFloat(match[0]);
-            if (!isNaN(angulo)) {
+        } else {
+            const match = rawData.match(/[-+]?\d*\.?\d+/);
+            if (match) {
+                const angulo = parseFloat(match[0]);
                 simulador.atualizarRotacao(angulo);
             }
-        }
-
-        // 3. LOG SELETIVO
-        if (!rawData.includes("Angulo:")) { 
-            addLog(rawData); 
+            // Só loga no painel se não for excessivamente rápido
+            if (!rawData.includes("Angulo:")) addLog(rawData);
         }
     };
 
     socket.onclose = () => {
         updateStatusUI(false);
-        setTimeout(startBridgeConnection, RECONNECT_INTERVAL);
+        setTimeout(startBridgeConnection, 2000);
     };
 
-    socket.onerror = () => socket.close();
+    socket.onerror = (err) => {
+        console.error("Erro no WebSocket:", err);
+        socket.close();
+    };
 }
 
+// 5. Configuração de Eventos (O segredo do funcionamento)
+function initEvents() {
+    // Evento do Botão de Envio de Texto
+    if (btnSend) {
+        btnSend.onclick = () => {
+            sendRawCommand(cmdInput.value.trim());
+            cmdInput.value = "";
+        };
+    }
+
+    // Evento de Tecla Enter no Input
+    if (cmdInput) {
+        cmdInput.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                sendRawCommand(cmdInput.value.trim());
+                cmdInput.value = "";
+            }
+        };
+    }
+
+    // Evento da Sidebar (Event Delegation)
+    if (sidebar) {
+        sidebar.addEventListener('click', (event) => {
+            const btn = event.target.closest('.cmd-btn');
+            if (!btn) return;
+
+            const command = btn.getAttribute('data-cmd');
+            sendRawCommand(command);
+
+            // Efeito visual
+            btn.style.filter = "brightness(1.5)";
+            setTimeout(() => { btn.style.filter = "none"; }, 150);
+        });
+        console.log("Eventos da Sidebar configurados.");
+    } else {
+        console.error("Sidebar não encontrada!");
+    }
+}
+
+// 6. Funções Auxiliares
 function updateStatusUI(isOnline) {
-    statusDot?.classList.toggle('connected', isOnline);
+    if (statusDot) statusDot.classList.toggle('connected', isOnline);
     if (statusText) {
         statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
         statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
@@ -67,63 +120,15 @@ function updateStatusUI(isOnline) {
 function addLog(msg) {
     if (!logElement) return;
     const line = document.createElement('div');
-    line.style.borderBottom = "1px solid rgba(0,0,0,0.05)";
-    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-    
+    line.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
     logElement.appendChild(line);
-    while (logElement.childNodes.length > 30) {
+    
+    while (logElement.childNodes.length > 20) {
         logElement.removeChild(logElement.firstChild);
     }
     logElement.scrollTop = logElement.scrollHeight;
 }
 
-// ==========================================
-// ENVIO DE COMANDOS (Input e Sidebar)
-// ==========================================
-
-function sendRawCommand(cmd) {
-    if (socket?.readyState === WebSocket.OPEN && cmd !== "") {
-        // Enviamos com \n para garantir que a placa processe a linha
-        socket.send(cmd + "\n");
-        addLog(`TX: ${cmd}`);
-    } else {
-        addLog("ERRO: Ponte desconectada.");
-    }
-}
-
-// Escuta a Sidebar (Botões J1, J2, números, etc)
-function setupSidebarControls() {
-    const sidebar = document.getElementById('sidebar');
-    if (!sidebar) return;
-
-    sidebar.addEventListener('click', (event) => {
-        const btn = event.target.closest('.cmd-btn');
-        if (!btn) return;
-
-        const command = btn.getAttribute('data-cmd');
-        if (command) {
-            sendRawCommand(command);
-            
-            // Feedback visual no botão
-            btn.style.filter = "brightness(1.5)";
-            setTimeout(() => { btn.style.filter = "none"; }, 150);
-        }
-    });
-}
-
-// Eventos de Input Manual
-btnSend.onclick = () => {
-    sendRawCommand(cmdInput.value.trim());
-    cmdInput.value = "";
-};
-
-cmdInput.onkeydown = (e) => { 
-    if (e.key === "Enter") {
-        sendRawCommand(cmdInput.value.trim());
-        cmdInput.value = "";
-    }
-};
-
-// Inicialização Geral
-setupSidebarControls();
+// Inicializar tudo
+initEvents();
 startBridgeConnection();
