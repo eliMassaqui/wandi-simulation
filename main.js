@@ -67,7 +67,7 @@ function updateStatusUI(isOnline) {
 function addLog(msg) {
     if (!logElement) return;
 
-    // Usamos div simples sem estilos extras para renderização ultra rápida
+    // Usamos div simples sem estilos extras para renderização ultra rápida.
     const line = document.createElement('div');
     line.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
     
