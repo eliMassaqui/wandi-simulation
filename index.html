@@ -7,56 +7,152 @@
   <style>
     :root {
       --panel-height: 220px;
-      --glass-bg: rgba(255, 255, 255, 0.8);
+      --glass-bg: rgba(255, 255, 255, 0.75);
+      --glass-border: rgba(255, 255, 255, 0.4);
       --output-bg: #f5f5f7;
       --accent: #1e90ff;
       --text: #1d1d1f;
       --green-led: #2ed573;
+      --card-bg: rgba(255, 255, 255, 0.6);
     }
 
     body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #d1d1d1; }
     canvas { position: fixed; top: 0; left: 0; z-index: 1; }
 
+    /* Painel Inferior (Mantido igual) */
     #serial-panel {
       position: fixed; bottom: 0; left: 0; width: 100%; height: var(--panel-height);
       background: var(--glass-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-      border-top: 1px solid rgba(0,0,0,0.1); z-index: 100; display: flex;
+      border-top: 1px solid var(--glass-border); z-index: 100; display: flex;
       box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
     }
-
     .panel-section { padding: 16px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(0,0,0,0.05); }
     .controls-area { width: 250px; min-width: 250px; }
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
-
-    /* LED Status com Pulsação */
     .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
-    
-    .dot.connected { 
-      background: var(--green-led); 
-      box-shadow: 0 0 10px var(--green-led);
-      animation: pulse-green 2s infinite; 
-    }
-
-    @keyframes pulse-green {
-      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.7); }
-      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(46, 213, 115, 0); }
-      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
-    }
-
+    .dot.connected { background: var(--green-led); box-shadow: 0 0 10px var(--green-led); animation: pulse-green 2s infinite; }
+    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(46, 213, 115, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); } }
     .info-box { background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; font-size: 11px; color: #666; border: 1px solid rgba(0,0,0,0.02); }
     .output-container { flex: 1; display: flex; flex-direction: column; background: var(--output-bg); margin: 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
     .output-header { padding: 6px 12px; font-size: 10px; font-weight: 700; color: #999; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; }
     #serial-log { flex: 1; padding: 12px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: #444; overflow-y: auto; white-space: pre-wrap; }
-
     .input-group { display: flex; gap: 6px; margin-top: auto; }
     input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: white; outline: none; font-size: 12px; }
     #btn-send { width: 45px; height: 38px; background: #2f3542; color: white; border: none; border-radius: 8px; cursor: pointer; }
     .material-symbols-rounded { font-size: 18px; }
+
+    /* ==========================================
+       NOVA SIDEBAR (Painel de Controlo Wandi)
+       ========================================== */
+    #sidebar {
+      position: fixed; right: 20px; top: 20px; bottom: calc(var(--panel-height) + 20px);
+      width: 260px; background: var(--glass-bg);
+      backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      border: 1px solid var(--glass-border); border-radius: 20px;
+      z-index: 101; display: flex; flex-direction: column;
+      box-shadow: -5px 10px 30px rgba(0,0,0,0.08); overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 20px; border-bottom: 1px solid rgba(0,0,0,0.05);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-header h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--text); }
+    .sidebar-header .icon { color: var(--accent); font-size: 24px; }
+
+    .sidebar-content { padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+
+    .control-card {
+      background: var(--card-bg); border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 14px; padding: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+    }
+
+    .card-title {
+      font-size: 11px; font-weight: 800; color: #888;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
+    }
+
+    .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+    /* Estilização Geral dos Botões */
+    .cmd-btn {
+      height: 42px; border: none; border-radius: 10px; font-weight: 700; font-size: 13px;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+      display: flex; justify-content: center; align-items: center;
+    }
+    .cmd-btn:active { transform: scale(0.92); }
+
+    /* Tipos de Botões */
+    .cmd-btn.blue {
+      background: linear-gradient(135deg, #1e90ff, #0071e3);
+      color: white; box-shadow: 0 4px 10px rgba(30,144,255,0.3);
+    }
+    .cmd-btn.blue:hover { box-shadow: 0 6px 14px rgba(30,144,255,0.4); filter: brightness(1.1); }
+
+    .cmd-btn.literal {
+      background: #ffffff; color: #333; border: 1px solid rgba(0,0,0,0.08);
+    }
+    .cmd-btn.literal:hover { background: #f0f0f5; }
+
+    .cmd-btn.numeric {
+      background: #2d3436; color: white;
+    }
+    .cmd-btn.numeric:hover { background: #1e272e; }
+
+    /* Scrollbar minimalista para a sidebar */
+    #sidebar::-webkit-scrollbar { width: 6px; }
+    #sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
   </style>
 </head>
 <body>
+
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <span class="material-symbols-rounded icon">precision_manufacturing</span>
+      <h2>Painel de Controlo Wandi</h2>
+    </div>
+
+    <div class="sidebar-content">
+      <div class="control-card">
+        <div class="card-title">Wandi Robot</div>
+        <div class="btn-grid">
+          <button class="cmd-btn blue" data-cmd="J1">J1</button>
+          <button class="cmd-btn blue" data-cmd="J2">J2</button>
+          <button class="cmd-btn blue" data-cmd="J3">J3</button>
+          <button class="cmd-btn blue" data-cmd="J4">J4</button>
+          <button class="cmd-btn blue" data-cmd="J5">J5</button>
+          <button class="cmd-btn blue" data-cmd="J6">J6</button>
+        </div>
+      </div>
+
+      <div class="control-card">
+        <div class="card-title">Parte Literal</div>
+        <div class="btn-grid">
+          <button class="cmd-btn literal" data-cmd="A">A</button>
+          <button class="cmd-btn literal" data-cmd="B">B</button>
+          <button class="cmd-btn literal" data-cmd="C">C</button>
+          <button class="cmd-btn literal" data-cmd="D">D</button>
+          <button class="cmd-btn literal" data-cmd="E">E</button>
+          <button class="cmd-btn literal" data-cmd="F">F</button>
+        </div>
+      </div>
+
+      <div class="control-card">
+        <div class="card-title">Parte Numérica</div>
+        <div class="btn-grid">
+          <button class="cmd-btn numeric" data-cmd="0">0</button>
+          <button class="cmd-btn numeric" data-cmd="1">1</button>
+          <button class="cmd-btn numeric" data-cmd="2">2</button>
+          <button class="cmd-btn numeric" data-cmd="3">3</button>
+          <button class="cmd-btn numeric" data-cmd="4">4</button>
+          <button class="cmd-btn numeric" data-cmd="5">5</button>
+        </div>
+      </div>
+    </div>
+  </aside>
 
   <div id="serial-panel">
     <div class="panel-section controls-area">
