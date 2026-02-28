@@ -25,18 +25,25 @@ function startBridgeConnection() {
     };
 
     socket.onmessage = (event) => {
-        const message = event.data.trim(); // Limpa espaços e quebras de linha.
+        const message = event.data.trim();
 
         if (message.startsWith("STATUS:")) {
             const state = message.split(":")[1];
-            updateStatusUI(state === "ON");
+            const isOnline = state === "ON";
+            
+            updateStatusUI(isOnline);
+            
+            // --- LIMPEZA AUTOMÁTICA DO LOG AO CONECTAR ---
+            if (isOnline && logElement) {
+                logElement.innerText = "--- Monitor Serial Iniciado ---";
+            }
             return;
         }
 
-        // DEBUG: Veja se aparece no console do navegador (F12)
-        console.log("Chegou da Serial:", message);
-
-        addLog(`RX: ${message}`);
+        // Se não for status, é dado real (RX)
+        if (message.length > 0) {
+            addLog(message); // Removi o "RX:" manual aqui para manter o log limpo
+        }
     };
 
     // Gerenciamento de falhas e reconexão automática
