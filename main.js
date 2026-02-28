@@ -11,47 +11,48 @@ window.addEventListener('resize', () => simulador.onResize());
 
 let socket = null;
 const BRIDGE_URL = "ws://127.0.0.1:8765";
-const RECONNECT_INTERVAL = 2000;
+const MAX_LOG_LINES = 15; // Mantém o painel leve
 
 function startBridgeConnection() {
     socket = new WebSocket(BRIDGE_URL);
 
     socket.onopen = () => {
+        logElement.innerText = ""; // Limpa o "Aguardando conexão..."
         addLog("SISTEMA: Ponte estabelecida.");
+        updateStatusUI(true);
     };
 
-socket.onmessage = (event) => {
-    // 1. Sanitização imediata: ignora mensagens vazias ou lixo de buffer
-    const data = event.data.trim();
-    if (!data) return;
+    socket.onmessage = (event) => {
+        const data = event.data.trim();
+        if (!data) return;
 
-    // 2. Filtro de Status
-    if (data.startsWith("STATUS:")) {
-        updateStatusUI(data.split(":")[1] === "ON");
-        return;
-    }
-
-    // 3. Extração ultra-rápida de números (Prevenção contra qualquer string suja)
-    // Este Regex pega o primeiro número que aparecer, não importa o texto ao redor
-    const match = data.match(/-?\d+(\.\d+)?/);
-    if (match) {
-        const valor = parseFloat(match[0]);
-        if (!isNaN(valor)) {
-            simulador.atualizarRotacao(valor);
+        // 1. Tratamento de Status
+        if (data.startsWith("STATUS:")) {
+            updateStatusUI(data.split(":")[1] === "ON");
+            return;
         }
-    }
 
-    // 4. Log Inteligente: Só logamos se não for uma avalanche de ângulos
-    // Se o dado for muito rápido, o log é o que trava o navegador.
-    // Aqui decidimos logar apenas mensagens que NÃO sejam apenas números.
-    if (isNaN(data)) {
-        addLog(data);
-    }
-};
+        // 2. Extração de Números (Filtragem Blindada)
+        // Pega qualquer número na string para mover o cubo
+        const match = data.match(/-?\d+(\.\d+)?/);
+        if (match) {
+            const angulo = parseFloat(match[0]);
+            if (!isNaN(angulo)) {
+                simulador.atualizarRotacao(angulo);
+            }
+        }
+
+        // 3. Log Inteligente (O segredo da leveza)
+        // Se a mensagem for só um número ou "Angulo: X", não logamos para poupar CPU.
+        // Logamos apenas mensagens de texto ou erros importantes.
+        if (isNaN(data) && !data.includes("Angulo:")) {
+            addLog(data);
+        }
+    };
 
     socket.onclose = () => {
         updateStatusUI(false);
-        setTimeout(startBridgeConnection, RECONNECT_INTERVAL);
+        setTimeout(startBridgeConnection, 2000);
     };
 
     socket.onerror = () => socket.close();
@@ -63,27 +64,25 @@ function updateStatusUI(isOnline) {
     statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
 }
 
-// Limite máximo de linhas para evitar consumo de RAM
-const MAX_LOG_LINES = 20; 
-
 function addLog(msg) {
     if (!logElement) return;
 
+    // Usamos div simples sem estilos extras para renderização ultra rápida
     const line = document.createElement('div');
-    // Visual limpo: apenas o texto, sem bordas ou linhas
-    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    line.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
     
     logElement.appendChild(line);
 
-    // Remove o excesso de forma eficiente
+    // Remove linhas antigas para não pesar a memória do navegador
     while (logElement.childNodes.length > MAX_LOG_LINES) {
         logElement.removeChild(logElement.firstChild);
     }
 
-    // Scroll suave apenas se necessário
+    // Auto-scroll
     logElement.scrollTop = logElement.scrollHeight;
 }
 
+// Envio de comandos
 function sendCommand() {
     const val = cmdInput.value.trim();
     if (socket?.readyState === WebSocket.OPEN && val !== "") {
