@@ -7,7 +7,7 @@ const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
 
 const simulador = new WandiSimulador();
-// Força o primeiro cálculo de área livre
+// Força o primeiro cálculo de área livre.
 simulador.onResize(); 
 window.addEventListener('resize', () => simulador.onResize());
 
