@@ -1,3 +1,5 @@
+import { WandiSimulador } from './simulador.js';
+
 // --- ELEMENTOS DA INTERFACE ---
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
@@ -5,10 +7,14 @@ const logElement = document.getElementById('serial-log');
 const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
 
+// --- INICIALIZAÇÃO DO MOTOR 3D ---
+const simulador = new WandiSimulador();
+window.addEventListener('resize', () => simulador.onResize());
+
 // --- CONFIGURAÇÃO DA CONEXÃO ---
 let socket = null;
-const BRIDGE_URL = "ws://127.0.0.1:8765"; // IP numérico evita falhas de DNS local
-const RECONNECT_INTERVAL = 2000; // Tenta reconectar a cada 2 segundos
+const BRIDGE_URL = "ws://127.0.0.1:8765"; //
+const RECONNECT_INTERVAL = 2000; //
 
 /**
  * Inicia o ciclo de conexão automática e infinita
@@ -27,36 +33,45 @@ function startBridgeConnection() {
     socket.onmessage = (event) => {
         const message = event.data.trim();
 
+        // 1. Tratamento de Status do Hardware
         if (message.startsWith("STATUS:")) {
             const state = message.split(":")[1];
             const isOnline = state === "ON";
             
             updateStatusUI(isOnline);
             
-            // --- LIMPEZA AUTOMÁTICA DO LOG AO CONECTAR ---
+            // Limpeza automática do log ao conectar
             if (isOnline && logElement) {
                 logElement.innerText = "--- Monitor Serial Iniciado ---";
             }
             return;
         }
 
-        // Se não for status, é dado real (RX)
+        // 2. Tratamento de Dados Reais (RX) e Rotação do Cubo
         if (message.length > 0) {
-            addLog(message); // Removi o "RX:" manual aqui para manter o log limpo.
+            addLog(message); 
+
+            // Extração do ângulo: Suporta formatos como "Angulo: 150.00" ou apenas "150.00"
+            // Utilizamos Regex para capturar o valor numérico com segurança
+            const match = message.match(/[-+]?[0-9]*\.?[0-9]+/);
+            if (match) {
+                const angulo = parseFloat(match[0]);
+                if (!isNaN(angulo)) {
+                    simulador.atualizarRotacao(angulo);
+                }
+            }
         }
     };
 
     // Gerenciamento de falhas e reconexão automática
     socket.onclose = () => {
-        updateStatusUI(false); // Garante que fique OFFLINE na interface.
+        updateStatusUI(false); 
         console.warn("⚠️ Conexão perdida. Tentando reconectar automaticamente...");
         
-        // Limpa o socket atual e agenda nova tentativa
         socket = null;
         setTimeout(startBridgeConnection, RECONNECT_INTERVAL);
     };
 
-    // Erros silenciosos para não travar o console
     socket.onerror = (err) => {
         socket.close(); 
     };
@@ -84,7 +99,6 @@ function addLog(msg) {
     if (!logElement) return;
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
-    // Adiciona o texto e faz scroll automático para o final
     logElement.innerText += `\n[${time}] ${msg}`;
     logElement.scrollTop = logElement.scrollHeight;
 }
