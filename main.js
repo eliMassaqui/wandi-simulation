@@ -87,6 +87,7 @@ function initEvents() {
             }
         };
     }
+}
 
 // 6. Funções Auxiliares
 function updateStatusUI(isOnline) {
