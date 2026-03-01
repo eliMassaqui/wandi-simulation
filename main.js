@@ -6,7 +6,6 @@ const statusText = document.getElementById('status-text');
 const logElement = document.getElementById('serial-log');
 const cmdInput = document.getElementById('serial-input');
 const btnSend = document.getElementById('btn-send');
-const sidebar = document.getElementById('sidebar');
 
 // 2. Inicialização do Simulador
 const simulador = new WandiSimulador();
@@ -88,25 +87,6 @@ function initEvents() {
             }
         };
     }
-
-    // Evento da Sidebar (Event Delegation)
-    if (sidebar) {
-        sidebar.addEventListener('click', (event) => {
-            const btn = event.target.closest('.cmd-btn');
-            if (!btn) return;
-
-            const command = btn.getAttribute('data-cmd');
-            sendRawCommand(command);
-
-            // Efeito visual
-            btn.style.filter = "brightness(1.5)";
-            setTimeout(() => { btn.style.filter = "none"; }, 150);
-        });
-        console.log("Eventos da Sidebar configurados.");
-    } else {
-        console.error("Sidebar não encontrada!");
-    }
-}
 
 // 6. Funções Auxiliares
 function updateStatusUI(isOnline) {
