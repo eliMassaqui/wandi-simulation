@@ -21,7 +21,7 @@ export class WandiSimulador {
         this.currentModel = null;
 
         this.setupLights();
-        this.loadModel('./public/models/MicroServo.glb');
+        this.loadModel('./models/MicroServo.glb');
         this.animate();
     }
 
