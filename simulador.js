@@ -1,105 +1,103 @@
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export class WandiSimulador {
     constructor() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x333333); 
+        this.scene.background = new THREE.Color(0x222222); // Fundo levemente mais escuro para contraste
 
-        this.camera = new THREE.PerspectiveCamera(53, window.innerWidth / window.innerHeight, 0.1, 2000);
+        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
         
-        this.renderer = new THREE.WebGLRenderer({ 
-            antialias: true, 
-            precision: "mediump", 
-            powerPreference: "high-performance" 
-        });
-        
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.shadowMap.enabled = true; // Habilita sombras para realismo
         document.body.appendChild(this.renderer.domElement);
 
-        // VARIÁVEIS DE CONTROLE
-        this.separatorPivot = null; // Substitui o cube na lógica de movimento
-        this.targetRotation = 0;    // Alvo vindo do Serial
-        this.lerpSpeed = 0.3;       // Mantendo sua velocidade original de 0.3
+        // Controles de câmera
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
 
-        this.setupScene();
-        this.loadMicroServo(); // Nova função de carga
+        this.targetRotation = 0;
+        this.currentModel = null;
+
+        this.setupLights();
+        this.loadModel('./public/models/MicroServo.glb'); // Carrega o modelo
         this.animate();
     }
 
-    setupScene() {
-        // Iluminação essencial para o modelo GLB
-        const ambient = new THREE.AmbientLight(0xffffff, 1.0);
+    setupLights() {
+        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(ambient);
+
         const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-        sun.position.set(50, 100, 75);
+        sun.position.set(5, 10, 7.5);
+        sun.castShadow = true;
         this.scene.add(sun);
-
-        const grid = new THREE.GridHelper(200, 20, 0x888888, 0x444444);
-        grid.position.y = -22; 
-        this.scene.add(grid);
-
-        this.camera.position.set(130, 110, -55);
-        this.camera.lookAt(0, 0, 0);
     }
 
-    loadMicroServo() {
+    loadModel(path) {
         const loader = new GLTFLoader();
-        // Carrega o seu modelo na pasta especificada
-        loader.load('./models/MicroServo.glb', (gltf) => {
-            const model = gltf.scene;
-            model.position.set(-65.6, -21.2, 23.2);
-            model.scale.setScalar(1.7226);
-            this.scene.add(model);
+        loader.load(path, (gltf) => {
+            if (this.currentModel) this.scene.remove(this.currentModel);
+            
+            this.currentModel = gltf.scene;
+            this.scene.add(this.currentModel);
 
-            // LOGICA ORIGINAL DE PIVÔS
-            const meshes = [];
-            model.traverse((node) => { if (node.isMesh) meshes.push(node); });
-
-            meshes.forEach((child) => {
-                const box = new THREE.Box3().setFromObject(child);
-                const center = new THREE.Vector3();
-                box.getCenter(center);
-
-                const pivot = new THREE.Group();
-                pivot.name = "Pivot_" + child.name;
-                pivot.position.copy(center);
-                child.parent.add(pivot);
-
-                child.position.sub(center);
-                pivot.add(child);
-
-                // Vincula a peça específica à variável de controle
-                if (child.name === "Separator") {
-                    this.separatorPivot = pivot;
-                }
-            });
+            this.ajustarAmbientePerfeito();
+            console.log("Objeto centralizado e câmera focada!");
         });
     }
 
+    ajustarAmbientePerfeito() {
+        // 1. Calcular a "caixa" (Box) do objeto para saber o tamanho real
+        const box = new THREE.Box3().setFromObject(this.currentModel);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        // 2. Centralizar o objeto no meio do plano (0,0,0)
+        this.currentModel.position.x += (this.currentModel.position.x - center.x);
+        this.currentModel.position.z += (this.currentModel.position.z - center.z);
+        
+        // 3. Colocar o objeto EXATAMENTE em cima da grade (y=0)
+        this.currentModel.position.y -= box.min.y;
+
+        // 4. Resetar a grade para o tamanho do objeto
+        if (this.grid) this.scene.remove(this.grid);
+        const maxDim = Math.max(size.x, size.z);
+        this.grid = new THREE.GridHelper(maxDim * 4, 20, 0x444444, 0x333333);
+        this.scene.add(this.grid);
+
+        // 5. POSICIONAR CÂMERA AUTOMATICAMENTE
+        // Calculamos a distância ideal baseada no tamanho do objeto
+        const fov = this.camera.fov * (Math.PI / 180);
+        let distance = Math.abs(size.y / Math.sin(fov / 2));
+        distance *= 1.5; // Margem de segurança para não ficar colado
+
+        this.camera.position.set(distance, distance, distance);
+        this.camera.lookAt(0, size.y / 2, 0);
+        
+        // Atualiza o ponto de rotação da câmera para o meio do objeto
+        this.controls.target.set(0, size.y / 2, 0);
+        this.controls.update();
+    }
+
     atualizarRotacao(graus) {
-        // Converte e armazena o alvo (exatamente como sua lógica original)
         this.targetRotation = graus * (Math.PI / 180);
     }
 
     animate() {
         requestAnimationFrame(() => this.animate());
+        this.controls.update();
 
-        // Só executa o movimento se o separatorPivot já foi carregado
-        if (this.separatorPivot) {
-            const diferenca = Math.abs(this.separatorPivot.rotation.y - this.targetRotation);
-            
-            if (diferenca > 0.0001) {
-                // Aplicando o LERP original no pivô do braço do servo
-                this.separatorPivot.rotation.y = THREE.MathUtils.lerp(
-                    this.separatorPivot.rotation.y, 
-                    this.targetRotation, 
-                    this.lerpSpeed 
-                );
-            }
+        if (this.currentModel) {
+            this.currentModel.rotation.y = THREE.MathUtils.lerp(
+                this.currentModel.rotation.y, 
+                this.targetRotation, 
+                0.1
+            );
         }
-
         this.renderer.render(this.scene, this.camera);
     }
 

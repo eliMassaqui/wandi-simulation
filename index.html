@@ -29,7 +29,6 @@
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .header h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text); }
 
-    /* LED Status com Pulsação */
     .status-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(0,0,0,0.05); border-radius: 12px; font-size: 10px; font-weight: 700; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
     
@@ -55,6 +54,15 @@
     #btn-send { width: 45px; height: 38px; background: #2f3542; color: white; border: none; border-radius: 8px; cursor: pointer; }
     .material-symbols-rounded { font-size: 18px; }
   </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
 
