@@ -19,6 +19,7 @@ export class WandiSimulador {
 
         this.targetRotation = 0;
         this.currentModel = null;
+        this.separatorPivot = null; // Grupo para rotação centralizada do Separator
 
         this.setupLights();
         this.loadModel('./public/models/MicroServo.glb');
@@ -37,8 +38,33 @@ export class WandiSimulador {
         loader.load(path, (gltf) => {
             if (this.currentModel) this.scene.remove(this.currentModel);
             this.currentModel = gltf.scene;
-            this.scene.add(this.currentModel);
 
+            // --- LÓGICA DE PIVÔ PARA O SEPARATOR ---
+            this.currentModel.traverse((child) => {
+                if (child.isMesh && child.name.includes("Separator")) {
+                    
+                    // 1. Calcula o centro real da peça (Bounding Box)
+                    const box = new THREE.Box3().setFromObject(child);
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+
+                    // 2. Cria o Pivô (Grupo Virtual)
+                    this.separatorPivot = new THREE.Group();
+                    this.separatorPivot.name = "Pivot_Separator";
+                    
+                    // 3. Posiciona o Pivô no centro exato da peça no espaço do modelo
+                    this.separatorPivot.position.copy(center);
+                    
+                    // 4. Insere o pivô na hierarquia e coloca a peça dentro dele
+                    child.parent.add(this.separatorPivot);
+                    child.position.sub(center); // Faz a geometria da peça "zerar" no centro do grupo
+                    this.separatorPivot.add(child);
+
+                    console.log("Peça 'Separator' vinculada ao pivô centralizado.");
+                }
+            });
+
+            this.scene.add(this.currentModel);
             this.centralizarEEnquadrar();
         }, undefined, (err) => console.error("Erro GLB:", err));
     }
@@ -48,19 +74,19 @@ export class WandiSimulador {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        // 1. Centraliza no plano X e Z, coloca a base no Y=0
+        // Centraliza o modelo inteiro no plano (0,0,0)
         this.currentModel.position.x += (this.currentModel.position.x - center.x);
         this.currentModel.position.z += (this.currentModel.position.z - center.z);
         this.currentModel.position.y -= box.min.y;
 
-        // 2. Adiciona auxiliares visuais (Eixos e Grade)
+        // Auxiliares visuais
         if (this.helpers) this.scene.remove(this.helpers);
         this.helpers = new THREE.Group();
         this.helpers.add(new THREE.GridHelper(Math.max(size.x, size.z) * 5, 20, 0x444444, 0x222222));
         this.helpers.add(new THREE.AxesHelper(Math.max(size.x, size.y, size.z)));
         this.scene.add(this.helpers);
 
-        // 3. Posiciona a câmera em um ângulo perfeito
+        // Câmera
         const maxDim = Math.max(size.x, size.y, size.z);
         const distance = maxDim * 2.5; 
         this.camera.position.set(distance, distance, distance);
@@ -76,14 +102,15 @@ export class WandiSimulador {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
 
-        if (this.currentModel) {
-            // Lógica original de suavização (Lerp)
-            this.currentModel.rotation.y = THREE.MathUtils.lerp(
-                this.currentModel.rotation.y, 
+        // ROTAÇÃO NO PIVÔ DO SEPARATOR (Não move o corpo do motor)
+        if (this.separatorPivot) {
+            this.separatorPivot.rotation.y = THREE.MathUtils.lerp(
+                this.separatorPivot.rotation.y, 
                 this.targetRotation, 
                 0.1
             );
         }
+
         this.renderer.render(this.scene, this.camera);
     }
 
