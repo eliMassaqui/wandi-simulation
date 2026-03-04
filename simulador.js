@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 export class WandiSimulador {
     constructor() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x0a0a0a);
+        this.scene.background = new THREE.Color(0xDBDBDB);
 
         this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });

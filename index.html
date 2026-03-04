@@ -7,9 +7,9 @@
   <style>
     :root {
       --glass-bg: rgba(255, 255, 255, 0.05);
-      --glass-border: rgba(255, 255, 255, 0.15);
+      --glass-border: rgba(0, 100, 255, 0.15);
       --accent: #00d2ff;
-      --text: #ffffff;
+      --text: #000000;
       --green-led: #2ed573;
     }
 
@@ -35,7 +35,7 @@
       100% { transform: scale(1); opacity: 1; }
     }
 
-    #serial-log { flex: 1; font-family: 'Consolas', monospace; font-size: 11px; overflow-y: auto; color: rgba(255,255,255,0.7); scrollbar-width: none; }
+    #serial-log { flex: 1; font-family: 'Consolas', monospace; font-size: 11px; overflow-y: auto; color: rgba(0,0,255,0.7); scrollbar-width: none; }
     .input-group { display: flex; gap: 8px; margin-top: 8px; }
     input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px 12px; color: white; outline: none; }
     #btn-send { background: var(--accent); color: #000; border: none; border-radius: 10px; width: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
