@@ -42,21 +42,35 @@ function startBridgeConnection() {
         updateStatusUI(true);
     };
 
-    socket.onmessage = (event) => {
-        const rawData = event.data.trim();
-        if (!rawData) return;
+// Dentro de socket.onmessage
 
-        if (rawData.startsWith("STATUS:")) {
-            updateStatusUI(rawData.split(":")[1] === "ON");
-        } else {
-            const match = rawData.match(/[-+]?\d*\.?\d+/);
-            if (match) {
-                const angulo = parseFloat(match[0]);
-                simulador.atualizarRotacao(angulo);
+socket.onmessage = (event) => {
+    const rawData = event.data.trim();
+    if (!rawData) return;
+
+    if (rawData.startsWith("STATUS:")) {
+        updateStatusUI(rawData.split(":")[1] === "ON");
+    } else {
+        // Regex aprimorada para capturar números decimais corretamente
+        const match = rawData.match(/[-+]?\d*\.?\d+/);
+        
+        if (match) {
+            const novoAngulo = parseFloat(match[0]);
+            
+            // FILTRO DE RUÍDO (Opcional): 
+            // Só atualiza se a mudança for significativa ou se não for um "salto" impossível
+            // Ex: Evita que o motor pule de 0 para 180 em 1ms por erro de leitura serial
+            if (!isNaN(novoAngulo)) {
+                simulador.atualizarRotacao(novoAngulo);
             }
-            if (!rawData.includes("Angulo:")) addLog(`RX: ${rawData}`);
         }
-    };
+        
+        // Log apenas se não for dado de telemetria contínua para não travar o browser
+        if (!rawData.toLowerCase().includes("angulo")) {
+            addLog(`RX: ${rawData}`);
+        }
+    }
+};
 
     socket.onclose = () => {
         updateStatusUI(false);

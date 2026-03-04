@@ -92,19 +92,36 @@ export class WandiSimulador {
         this.targetRotation = graus * (Math.PI / 180);
     }
 
-    animate() {
-        requestAnimationFrame(() => this.animate());
-        this.controls.update();
+// Dentro da classe WandiSimulador
 
-        if (this.separatorPivot) {
-            this.separatorPivot.rotation.y = THREE.MathUtils.lerp(
-                this.separatorPivot.rotation.y, 
-                this.targetRotation, 
-                0.1
-            );
-        }
-        this.renderer.render(this.scene, this.camera);
+animate() {
+    requestAnimationFrame((t) => this.animate(t));
+    
+    // 1. Calcular o Delta Time para fluidez constante
+    const currentTime = performance.now();
+    if (!this.lastTime) this.lastTime = currentTime;
+    const deltaTime = (currentTime - this.lastTime) / 1000; // em segundos
+    this.lastTime = currentTime;
+
+    this.controls.update();
+
+    if (this.separatorPivot) {
+        // 2. Ajuste de Suavização (Smoothing)
+        // Aumente 5.0 para mais "peso/atraso" ou diminua para ser mais "seco/direto"
+        const smoothing = 8.0; 
+        
+        // Fórmula de Interpolação Robusta: 1 - exp(-speed * dt)
+        const lerpFactor = 1 - Math.exp(-smoothing * deltaTime);
+
+        this.separatorPivot.rotation.y = THREE.MathUtils.lerp(
+            this.separatorPivot.rotation.y, 
+            this.targetRotation, 
+            lerpFactor
+        );
     }
+    
+    this.renderer.render(this.scene, this.camera);
+}
 
     onResize() {
         this.camera.aspect = window.innerWidth / window.innerHeight;
