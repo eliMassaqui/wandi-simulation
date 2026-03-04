@@ -1,95 +1,115 @@
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { WandiSimulador } from './simulador.js';
 
-export class WandiSimulador {
-    constructor() {
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x111111);
+// 1. Referências de Elementos
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const logElement = document.getElementById('serial-log');
+const cmdInput = document.getElementById('serial-input');
+const btnSend = document.getElementById('btn-send');
 
-        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-        
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(this.renderer.domElement);
+// 2. Inicialização do Simulador
+const simulador = new WandiSimulador();
+window.addEventListener('resize', () => simulador.onResize());
 
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.enableDamping = true;
+let socket = null;
+const BRIDGE_URL = "ws://127.0.0.1:8765";
 
-        this.targetRotation = 0;
-        this.currentModel = null;
-
-        this.setupLights();
-        this.loadModel('./public/models/MicroServo.glb');
-        this.animate();
-    }
-
-    setupLights() {
-        this.scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-        sun.position.set(5, 10, 7.5);
-        this.scene.add(sun);
-    }
-
-    loadModel(path) {
-        const loader = new GLTFLoader();
-        loader.load(path, (gltf) => {
-            if (this.currentModel) this.scene.remove(this.currentModel);
-            this.currentModel = gltf.scene;
-            this.scene.add(this.currentModel);
-
-            this.centralizarEEnquadrar();
-        }, undefined, (err) => console.error("Erro GLB:", err));
-    }
-
-    centralizarEEnquadrar() {
-        const box = new THREE.Box3().setFromObject(this.currentModel);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-
-        // 1. Centraliza no plano X e Z, coloca a base no Y=0
-        this.currentModel.position.x += (this.currentModel.position.x - center.x);
-        this.currentModel.position.z += (this.currentModel.position.z - center.z);
-        this.currentModel.position.y -= box.min.y;
-
-        // 2. Adiciona auxiliares visuais (Eixos e Grade)
-        if (this.helpers) this.scene.remove(this.helpers);
-        this.helpers = new THREE.Group();
-        this.helpers.add(new THREE.GridHelper(Math.max(size.x, size.z) * 5, 20, 0x444444, 0x222222));
-        this.helpers.add(new THREE.AxesHelper(Math.max(size.x, size.y, size.z)));
-        this.scene.add(this.helpers);
-
-        // 3. Posiciona a câmera em um ângulo perfeito
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const distance = maxDim * 2.5; 
-        this.camera.position.set(distance, distance, distance);
-        this.controls.target.set(0, size.y / 2, 0);
-        this.controls.update();
-    }
-
-    atualizarRotacao(graus) {
-        this.targetRotation = graus * (Math.PI / 180);
-    }
-
-    animate() {
-        requestAnimationFrame(() => this.animate());
-        this.controls.update();
-
-        if (this.currentModel) {
-            // Lógica original de suavização (Lerp)
-            this.currentModel.rotation.y = THREE.MathUtils.lerp(
-                this.currentModel.rotation.y, 
-                this.targetRotation, 
-                0.1
-            );
-        }
-        this.renderer.render(this.scene, this.camera);
-    }
-
-    onResize() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+// 3. Função de Envio (Centralizada)
+function sendRawCommand(cmd) {
+    if (!cmd) return;
+    
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        // Enviamos o comando com terminador \n para a placa reconhecer
+        socket.send(cmd + "\n");
+        addLog(`TX: ${cmd}`);
+        console.log("Comando enviado via WS:", cmd);
+    } else {
+        addLog("ERRO: Ponte desconectada. Comando não enviado.");
+        console.warn("Tentativa de envio sem socket aberto.");
     }
 }
+
+// 4. Conexão com a Ponte
+function startBridgeConnection() {
+    console.log("Tentando conectar à ponte...");
+    socket = new WebSocket(BRIDGE_URL);
+
+    socket.onopen = () => {
+        addLog("SISTEMA: Conectado à Ponte.");
+        updateStatusUI(true);
+    };
+
+    socket.onmessage = (event) => {
+        const rawData = event.data.trim();
+        if (!rawData) return;
+
+        // Tratar dados recebidos (Status ou Ângulo)
+        if (rawData.startsWith("STATUS:")) {
+            updateStatusUI(rawData.split(":")[1] === "ON");
+        } else {
+            const match = rawData.match(/[-+]?\d*\.?\d+/);
+            if (match) {
+                const angulo = parseFloat(match[0]);
+                simulador.atualizarRotacao(angulo);
+            }
+            // Só loga no painel se não for excessivamente rápido
+            if (!rawData.includes("Angulo:")) addLog(rawData);
+        }
+    };
+
+    socket.onclose = () => {
+        updateStatusUI(false);
+        setTimeout(startBridgeConnection, 2000);
+    };
+
+    socket.onerror = (err) => {
+        console.error("Erro no WebSocket:", err);
+        socket.close();
+    };
+}
+
+// 5. Configuração de Eventos (O segredo do funcionamento)
+function initEvents() {
+    // Evento do Botão de Envio de Texto
+    if (btnSend) {
+        btnSend.onclick = () => {
+            sendRawCommand(cmdInput.value.trim());
+            cmdInput.value = "";
+        };
+    }
+
+    // Evento de Tecla Enter no Input
+    if (cmdInput) {
+        cmdInput.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                sendRawCommand(cmdInput.value.trim());
+                cmdInput.value = "";
+            }
+        };
+    }
+}
+
+// 6. Funções Auxiliares
+function updateStatusUI(isOnline) {
+    if (statusDot) statusDot.classList.toggle('connected', isOnline);
+    if (statusText) {
+        statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
+        statusText.style.color = isOnline ? "#2ed573" : "#ff4757";
+    }
+}
+
+function addLog(msg) {
+    if (!logElement) return;
+    const line = document.createElement('div');
+    line.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
+    logElement.appendChild(line);
+    
+    while (logElement.childNodes.length > 20) {
+        logElement.removeChild(logElement.firstChild);
+    }
+    logElement.scrollTop = logElement.scrollHeight;
+}
+
+// Inicializar tudo
+initEvents();
+startBridgeConnection();
