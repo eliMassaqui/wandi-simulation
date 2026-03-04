@@ -22,7 +22,7 @@ export class WandiSimulador {
         this.separatorPivot = null; // Grupo para rotação centralizada do Separator
 
         this.setupLights();
-        this.loadModel('./public/models/MicroServo.glb');
+        this.loadModel('./models/MicroServo.glb');
         this.animate();
     }
 
