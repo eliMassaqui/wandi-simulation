@@ -12,24 +12,33 @@ const BRIDGE_URL = "ws://127.0.0.1:8765";
 
 function addLog(msg) {
     const line = document.createElement('div');
-    line.textContent = `> ${msg}`; // Mais rápido que innerHTML
+    line.innerHTML = `<span style="color: var(--accent)">></span> [${new Date().toLocaleTimeString()}] ${msg}`;
     logElement.appendChild(line);
-    if (logElement.childNodes.length > 15) logElement.removeChild(logElement.firstChild);
+    if (logElement.childNodes.length > 20) logElement.removeChild(logElement.firstChild);
     logElement.scrollTop = logElement.scrollHeight;
 }
 
 function updateStatusUI(isOnline) {
-    statusDot.className = isOnline ? 'dot connected' : 'dot';
+    statusDot.classList.toggle('connected', isOnline);
     statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
     statusText.style.color = isOnline ? "var(--green-led)" : "#ff4757";
-    simulador.setGridStatus(isOnline);
+}
+
+function sendRawCommand(cmd) {
+    if (!cmd) return;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(cmd + "\n");
+        addLog(`TX: ${cmd}`);
+    } else {
+        addLog("ERRO: Ponte desconectada.");
+    }
 }
 
 function startBridgeConnection() {
     socket = new WebSocket(BRIDGE_URL);
 
     socket.onopen = () => {
-        addLog("Conectado à ponte WebSocket.");
+        addLog("SISTEMA: Conectado à Ponte.");
         updateStatusUI(true);
     };
 
@@ -37,22 +46,15 @@ function startBridgeConnection() {
         const rawData = event.data.trim();
         if (!rawData) return;
 
-        // Lógica de comando de status
         if (rawData.startsWith("STATUS:")) {
-            updateStatusUI(rawData.includes("ON"));
-            return;
-        }
-
-        // Parsing numérico otimizado (aceita "90", "Angulo:90", etc)
-        const numMatch = rawData.match(/-?\d+(\.\d+)?/);
-        if (numMatch) {
-            const angulo = parseFloat(numMatch[0]);
-            simulador.atualizarRotacao(angulo);
-        }
-
-        // Log apenas de mensagens não-numéricas para não poluir
-        if (isNaN(rawData[0]) && !rawData.includes("Angulo")) {
-            addLog(`RX: ${rawData}`);
+            updateStatusUI(rawData.split(":")[1] === "ON");
+        } else {
+            const match = rawData.match(/[-+]?\d*\.?\d+/);
+            if (match) {
+                const angulo = parseFloat(match[0]);
+                simulador.atualizarRotacao(angulo);
+            }
+            if (!rawData.includes("Angulo:")) addLog(`RX: ${rawData}`);
         }
     };
 
@@ -62,17 +64,17 @@ function startBridgeConnection() {
     };
 }
 
-const sendCmd = () => {
-    const val = cmdInput.value.trim();
-    if (val && socket?.readyState === WebSocket.OPEN) {
-        socket.send(val + "\n");
-        addLog(`TX: ${val}`);
+btnSend.onclick = () => {
+    sendRawCommand(cmdInput.value.trim());
+    cmdInput.value = "";
+};
+
+cmdInput.onkeydown = (e) => {
+    if (e.key === "Enter") {
+        sendRawCommand(cmdInput.value.trim());
         cmdInput.value = "";
     }
 };
 
-btnSend.onclick = sendCmd;
-cmdInput.onkeydown = (e) => e.key === "Enter" && sendCmd();
-window.onresize = () => simulador.onResize();
-
+window.addEventListener('resize', () => simulador.onResize());
 startBridgeConnection();
