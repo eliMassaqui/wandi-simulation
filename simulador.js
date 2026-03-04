@@ -27,7 +27,7 @@ export class WandiSimulador {
 
         const loader = new GLTFLoader();
         // Certifique-se de que o caminho do modelo está correto
-        loader.load('./public/models/MicroServo.glb', (gltf) => {
+        loader.load('./models/MicroServo.glb', (gltf) => {
             const model = gltf.scene;
             
             model.traverse((child) => {
