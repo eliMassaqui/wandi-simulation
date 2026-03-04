@@ -7,22 +7,14 @@ export class WandiSimulador {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0a0a);
 
-        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(this.renderer.domElement);
 
-        // Adicionando OrbitControls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-
-        // Auxiliares Visuais (Eixos e Grade)
-        const axesHelper = new THREE.AxesHelper(5);
-        this.scene.add(axesHelper);
-        
-        const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
-        this.scene.add(gridHelper);
 
         this.targetRotation = 0;
         this.separatorPivot = null; 
@@ -32,9 +24,8 @@ export class WandiSimulador {
     }
 
     init() {
-        // Iluminação Global e Direcional
-        this.scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
         sun.position.set(10, 20, 10);
         this.scene.add(sun);
 
@@ -42,22 +33,28 @@ export class WandiSimulador {
         loader.load('./models/MicroServo.glb', (gltf) => {
             const model = gltf.scene;
             
-            // 1. Centralização Real: Calcula a bounding box do modelo
+            // --- CÁLCULO DE CENTRALIZAÇÃO E POSICIONAMENTO ---
             const box = new THREE.Box3().setFromObject(model);
-            const center = new THREE.Vector3();
-            box.getCenter(center);
             const size = new THREE.Vector3();
             box.getSize(size);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
 
-            // Reposiciona o modelo para que o centro dele fique no (0,0,0)
-            model.position.x += (model.position.x - center.x);
-            model.position.y += (model.position.y - center.y);
-            model.position.z += (model.position.z - center.z);
-            
-            // Coloca a "base" do modelo no chão (opcional, remova se quiser centro absoluto)
-            model.position.y -= (model.position.y - box.min.y); 
+            // 1. Centraliza no X e Z, mas coloca a BASE (min.y) exatamente no Y=0.01 (um pouquinho acima do plano)
+            model.position.x = -center.x;
+            model.position.z = -center.z;
+            model.position.y = -box.min.y + 0.05; // 0.05 para não haver "z-fighting" com o grid
 
-            // 2. Lógica do Pivô para a peça móvel (Separator)
+            // --- CRIAÇÃO DO PLANO CARTESIANO PROPORCIONAL ---
+            const maxDim = Math.max(size.x, size.z);
+            const gridSize = Math.max(maxDim * 10, 20); // O plano ocupa uma área 10x maior que o modelo
+            const gridHelper = new THREE.GridHelper(gridSize, 20, 0x00d2ff, 0x333333);
+            this.scene.add(gridHelper);
+
+            const axesHelper = new THREE.AxesHelper(gridSize / 2);
+            this.scene.add(axesHelper);
+
+            // --- LÓGICA DO PIVÔ (SEPARATOR) ---
             model.traverse((child) => {
                 if (child.isMesh && child.name.includes("Separator")) {
                     const childBox = new THREE.Box3().setFromObject(child);
@@ -65,11 +62,11 @@ export class WandiSimulador {
                     childBox.getCenter(childCenter);
 
                     this.separatorPivot = new THREE.Group();
-                    // O pivot fica na posição global do centro da peça
+                    // O pivot deve estar na posição relativa correta
                     this.separatorPivot.position.copy(childCenter);
                     
                     child.parent.add(this.separatorPivot);
-                    child.position.sub(childCenter); // Local offset
+                    child.position.sub(childCenter);
                     this.separatorPivot.add(child);
                 }
             });
@@ -80,15 +77,12 @@ export class WandiSimulador {
     }
 
     setupCamera(size) {
-        // Cálculo de distância baseado no tamanho do objeto para enquadramento perfeito
         const maxDim = Math.max(size.x, size.y, size.z);
-        const fov = this.camera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+        // Posicionamento "um pouco acima" e em ângulo 45 graus
+        const dist = maxDim * 3; 
         
-        cameraZ *= 2.5; // Multiplicador para dar um recuo confortável
-
-        this.camera.position.set(cameraZ, cameraZ, cameraZ);
-        this.camera.lookAt(0, 0, 0);
+        this.camera.position.set(dist, dist * 0.8, dist);
+        this.camera.lookAt(0, size.y / 2, 0);
         
         this.controls.target.set(0, size.y / 2, 0);
         this.controls.update();
@@ -100,8 +94,7 @@ export class WandiSimulador {
 
     animate() {
         requestAnimationFrame(() => this.animate());
-
-        this.controls.update(); // Necessário para o damping do OrbitControls
+        this.controls.update();
 
         if (this.separatorPivot) {
             this.separatorPivot.rotation.y = THREE.MathUtils.lerp(
@@ -110,7 +103,6 @@ export class WandiSimulador {
                 0.1
             );
         }
-
         this.renderer.render(this.scene, this.camera);
     }
 
