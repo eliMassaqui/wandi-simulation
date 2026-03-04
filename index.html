@@ -3,42 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <title>Wandi Simulation Studio</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
   <style>
     :root {
-      --glass-bg: rgba(255, 255, 255, 0.05);
-      --glass-border: rgba(255, 255, 255, 0.15);
+      --glass-bg: rgba(15, 15, 15, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.1);
       --accent: #00d2ff;
-      --text: #ffffff;
       --green-led: #2ed573;
     }
 
-    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a0a; }
-    canvas { position: fixed; top: 0; left: 0; z-index: 1; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #050505; }
+    canvas { position: fixed; top: 0; left: 0; z-index: 1; outline: none; }
 
     #serial-panel {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      width: 600px; max-width: 90vw; height: 180px;
-      background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-      border: 1px solid var(--glass-border); border-radius: 20px;
-      z-index: 100; display: flex; flex-direction: column; padding: 12px; color: var(--text);
+      width: 580px; max-width: 95vw; height: 160px;
+      background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border); border-radius: 16px;
+      z-index: 100; display: flex; flex-direction: column; padding: 12px; color: #fff;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); pointer-events: none; /* Melhora performance de clique no 3D */
     }
 
-    .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; margin-bottom: 8px; }
-    .status-badge { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: bold; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
-    .dot.connected { background: var(--green-led); box-shadow: 0 0 10px var(--green-led); animation: pulse 2s infinite; }
+    .panel-header, .input-group, #serial-log { pointer-events: auto; }
 
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.2); opacity: 0.7; }
-      100% { transform: scale(1); opacity: 1; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--glass-border); margin-bottom: 6px; }
+    .status-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; }
+    .dot.connected { background: var(--green-led); box-shadow: 0 0 12px var(--green-led); }
+
+    #serial-log { 
+      flex: 1; font-family: 'Consolas', monospace; font-size: 11px; overflow-y: auto; 
+      color: rgba(255,255,255,0.6); scrollbar-width: none; 
     }
 
-    #serial-log { flex: 1; font-family: 'Consolas', monospace; font-size: 11px; overflow-y: auto; color: rgba(255,255,255,0.7); scrollbar-width: none; }
     .input-group { display: flex; gap: 8px; margin-top: 8px; }
-    input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px 12px; color: white; outline: none; }
-    #btn-send { background: var(--accent); color: #000; border: none; border-radius: 10px; width: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    input { 
+      flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); 
+      border-radius: 8px; padding: 8px 12px; color: white; outline: none; transition: 0.2s;
+    }
+    input:focus { border-color: var(--accent); background: rgba(255,255,255,0.1); }
+    
+    #btn-send { 
+      background: var(--accent); color: #000; border: none; border-radius: 8px; 
+      width: 42px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;
+    }
+    #btn-send:hover { transform: scale(1.05); opacity: 0.9; }
   </style>
 
   <script type="importmap">
@@ -53,15 +62,15 @@
 <body>
   <div id="serial-panel">
     <div class="panel-header">
-      <span style="font-size: 12px; opacity: 0.6;">WANDI TERMINAL</span>
+      <span style="font-size: 10px; opacity: 0.5; font-weight: 800;">WANDI STUDIO PRO</span>
       <div class="status-badge">
         <div id="status-dot" class="dot"></div>
         <span id="status-text">OFFLINE</span>
       </div>
     </div>
-    <div id="serial-log">Aguardando ponte WebSocket...</div>
+    <div id="serial-log">Aguardando telemetria...</div>
     <div class="input-group">
-      <input type="text" id="serial-input" placeholder="Comando Serial..." />
+      <input type="text" id="serial-input" placeholder="Enviar comando..." autocomplete="off" />
       <button id="btn-send"><span class="material-symbols-rounded">send</span></button>
     </div>
   </div>
