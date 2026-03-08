@@ -4,8 +4,6 @@ const simulador = new WandiSimulador();
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const logElement = document.getElementById('serial-log');
-const cmdInput = document.getElementById('serial-input');
-const btnSend = document.getElementById('btn-send');
 
 let socket = null;
 const BRIDGE_URL = "ws://127.0.0.1:8765";
@@ -22,16 +20,6 @@ function updateStatusUI(isOnline) {
     statusDot.classList.toggle('connected', isOnline);
     statusText.innerText = isOnline ? "ONLINE" : "OFFLINE";
     statusText.style.color = isOnline ? "var(--green-led)" : "#ff4757";
-}
-
-function sendRawCommand(cmd) {
-    if (!cmd) return;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(cmd + "\n");
-        addLog(`TX: ${cmd}`);
-    } else {
-        addLog("ERRO: Ponte desconectada.");
-    }
 }
 
 function startBridgeConnection() {
@@ -77,18 +65,6 @@ socket.onmessage = (event) => {
         setTimeout(startBridgeConnection, 2000);
     };
 }
-
-btnSend.onclick = () => {
-    sendRawCommand(cmdInput.value.trim());
-    cmdInput.value = "";
-};
-
-cmdInput.onkeydown = (e) => {
-    if (e.key === "Enter") {
-        sendRawCommand(cmdInput.value.trim());
-        cmdInput.value = "";
-    }
-};
 
 window.addEventListener('resize', () => simulador.onResize());
 startBridgeConnection();

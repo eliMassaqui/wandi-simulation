@@ -18,9 +18,9 @@
 
     #serial-panel {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      width: 600px; max-width: 90vw; height: 180px;
+      width: 300px; max-width: 90vw; height: 130px;
       background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-      border: 1px solid var(--glass-border); border-radius: 20px;
+      border: 1px solid var(--glass-border); border-radius: 15px;
       z-index: 100; display: flex; flex-direction: column; padding: 12px; color: var(--text);
     }
 
@@ -36,9 +36,6 @@
     }
 
     #serial-log { flex: 1; font-family: 'Consolas', monospace; font-size: 11px; overflow-y: auto; color: rgba(0,0,255,0.7); scrollbar-width: none; }
-    .input-group { display: flex; gap: 8px; margin-top: 8px; }
-    input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px 12px; color: white; outline: none; }
-    #btn-send { background: var(--accent); color: #000; border: none; border-radius: 10px; width: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   </style>
 
   <script type="importmap">
@@ -53,17 +50,13 @@
 <body>
   <div id="serial-panel">
     <div class="panel-header">
-      <span style="font-size: 12px; opacity: 0.6;">WANDI TERMINAL</span>
+      <span style="font-size: 11px; opacity: 0.6;">WANDI TERMINAL</span>
       <div class="status-badge">
         <div id="status-dot" class="dot"></div>
         <span id="status-text">OFFLINE</span>
       </div>
     </div>
     <div id="serial-log">Aguardando ponte WebSocket...</div>
-    <div class="input-group">
-      <input type="text" id="serial-input" placeholder="Enviar comando..." />
-      <button id="btn-send"><span class="material-symbols-rounded">send</span></button>
-    </div>
   </div>
   <script type="module" src="main.js"></script>
 </body>
