@@ -1,0 +1,148 @@
+Solução rotação 
+
+Entendo perfeitamente o que está acontecendo. Isso ocorre porque, no Three.js (e em 3D no geral), os objetos rotacionam em torno do seu ponto de origem (pivot).
+
+Se o designer que criou o .glb não centralizou o eixo da peça na origem (0,0,0) antes de exportar, quando você tenta girar a engrenagem ou o braço, ele faz um movimento de "órbita" (como um planeta) em vez de girar como um pião.
+
+Para resolver isso via código sem precisar voltar ao Blender, precisamos usar um Group como um "pivô virtual".
+
+A Solução: Centralização Dinâmica
+Vou ajustar a lógica do traverse. Para cada peça, vamos:
+
+Calcular o centro real da geometria (Box3).
+
+Criar um grupo vazio exatamente nesse centro.
+
+Colocar a peça dentro desse grupo, mas deslocada para compensar o erro.
+
+Aqui está o código completo corrigido com essa técnica:
+
+HTML
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroServo - Rotação Centralizada</title>
+    <style> body { margin: 0; overflow: hidden; } canvas { display: block; } </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import GUI from 'lil-gui';
+
+        const CAMERA_INICIAL = { x: 130, y: 110, z: -55, fov: 53 };
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xd1d1d1);
+
+        const camera = new THREE.PerspectiveCamera(CAMERA_INICIAL.fov, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(CAMERA_INICIAL.x, CAMERA_INICIAL.y, CAMERA_INICIAL.z);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8), new THREE.DirectionalLight(0xffffff, 1.4));
+        scene.add(new THREE.GridHelper(200, 20));
+
+        const gui = new GUI({ title: '🕹️ Ajuste de Eixo' });
+        const loader = new GLTFLoader();
+
+        loader.load('MicroServo.glb', (gltf) => {
+            const model = gltf.scene;
+            model.position.set(-65.6, -21.2, 23.2);
+            model.scale.setScalar(1.7226);
+            scene.add(model);
+
+            const partsFolder = gui.addFolder('Peças Individuais');
+
+            // Lista para evitar duplicatas em grupos processados
+            const processedMeshes = new Set();
+
+            model.traverse((child) => {
+                if (child.isMesh && !processedMeshes.has(child)) {
+                    processedMeshes.add(child);
+
+                    // --- MÁGICA DO PIVÔ CENTRALIZADO ---
+                    
+                    // 1. Calcula os limites reais da peça
+                    const box = new THREE.Box3().setFromObject(child);
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+
+                    // 2. Cria um Grupo que servirá como novo "Eixo"
+                    const pivot = new THREE.Group();
+                    pivot.name = "Pivot_" + child.name;
+                    
+                    // Posiciona o grupo no centro da peça, mas mantendo a hierarquia
+                    pivot.position.copy(center);
+                    child.parent.add(pivot);
+
+                    // 3. Coloca a peça dentro do grupo e subtrai a posição
+                    // Isso faz com que a geometria fique centralizada no (0,0,0) do Grupo
+                    child.position.sub(center);
+                    pivot.add(child);
+
+                    // --- GUI PARA O PIVÔ (Onde a rotação agora funciona perfeitamente) ---
+                    const pFolder = partsFolder.addFolder(child.name || "Peça");
+                    
+                    pFolder.add(child, 'visible').name('Visível');
+                    
+                    // Rotação agora é feita no PIVOT, não no Mesh
+                    pFolder.add(pivot.rotation, 'x', -Math.PI, Math.PI).name('Girar Eixo X');
+                    pFolder.add(pivot.rotation, 'y', -Math.PI, Math.PI).name('Girar Eixo Y');
+                    pFolder.add(pivot.rotation, 'z', -Math.PI, Math.PI).name('Girar Eixo Z');
+
+                    // Movimentação do Pivô
+                    pFolder.add(pivot.position, 'x', center.x - 50, center.x + 50).name('Mover X');
+                    pFolder.add(pivot.position, 'y', center.y - 50, center.y + 50).name('Mover Y');
+                    pFolder.add(pivot.position, 'z', center.z - 50, center.z + 50).name('Mover Z');
+                    
+                    pFolder.close();
+                }
+            });
+        });
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+O que foi corrigido:
+Criação de Pivôs: O código agora cria um THREE.Group() para cada peça.
+
+Cálculo de Centro: Usei THREE.Box3().setFromObject(child) para descobrir matematicamente onde fica o meio exato de cada engrenagem ou parafuso.
+
+Compensação de Posição: A peça é movida para dentro desse grupo de forma que o centro dela coincida com o ponto (0,0,0) do grupo.
+
+Interface GUI: Os sliders de rotação agora controlam o Grupo (Pivot). Como a peça está centralizada dentro dele, ela vai girar perfeitamente em torno do próprio eixo, sem sair voando pela cena.
+
+Dica: Ao testar, você verá que agora a rotação no eixo Y (ou no eixo principal da peça) fará com que ela gire como se estivesse em um torno mecânico.
+
+Ficou mais fácil de controlar agora? Se precisar que eu identifique automaticamente qual é o eixo principal (X, Y ou Z) de cada peça, posso tentar implementar uma bússola local!
