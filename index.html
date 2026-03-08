@@ -18,13 +18,13 @@
 
     #serial-panel {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      width: 300px; max-width: 90vw; height: 130px;
+      width: 350px; max-width: 90vw; height: 130px;
       background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
       border: 1px solid var(--glass-border); border-radius: 15px;
       z-index: 100; display: flex; flex-direction: column; padding: 12px; color: var(--text);
     }
 
-    .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; margin-bottom: 8px; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px; margin-bottom: 8px; }
     .status-badge { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: bold; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: 0.4s; }
     .dot.connected { background: var(--green-led); box-shadow: 0 0 10px var(--green-led); animation: pulse 2s infinite; }
