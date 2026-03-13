@@ -56,7 +56,7 @@ export class WandiSimulador {
 
             // --- LÓGICA DO PIVÔ (SEPARATOR) ---
             model.traverse((child) => {
-                if (child.isMesh && child.name.includes("Separator")) {
+                if (child.isMesh && child.name.includes("SEPARATOR")) {
                     const childBox = new THREE.Box3().setFromObject(child);
                     const childCenter = new THREE.Vector3();
                     childBox.getCenter(childCenter);
